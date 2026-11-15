@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done (§15). Next: Phase 3 manual test in Claude Code, then Phase 4.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 code done (§16); next: the reference test on Windows.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -595,6 +595,20 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Windows, 2026-11-15: the server registered at user scope shows "Connected". In
   PowerShell 5.1 use `claude.exe` (the `claude.ps1` wrapper drops `--`) and put the server
   name before `-e` (`-e` takes several values).
+
+## 16. Phase 4 notes
+
+- sd-cli handles FLUX.2 references with the `flux2` preset (auto-selected): VAE-encoded
+  references go to the DiT, RoPE index `increase`, no VLM pass (`docs/guides/edit.md`,
+  commit 532d2c1). `-r` can repeat. No `--ref-image-args` is necessary.
+- sd-cli sets the output size from a reference only when `-W/-H` are unset. We always pass
+  `-W/-H`, so `service.size_like_reference` computes a size with the shape of the first
+  reference (about the default pixel count, multiples of `size_multiple`, inside the limits).
+- Capability, count (`max_reference_images: 4`, our own limit) and file checks already
+  existed from Phase 1; the MCP tool now documents formats and relative paths.
+- Phase 3 test in Claude Code on Windows, 2026-11-15: a new session generated a skier image
+  through the server (Z-Image Q5_K_M, 1216×832, 8 steps, 23.6 s; the sd-cli log shows the
+  RTX 5060 with CUDA). The output went to the session's project directory, as designed.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 

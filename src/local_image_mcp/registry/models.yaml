@@ -73,10 +73,12 @@ models:
     license_url: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
     vram_estimate_gb: 4.5  # measured: 4.3 GB peak, Q4_K_M, 1024x1024, text encoder on CPU
     supports_negative_prompt: false
-    max_reference_images: 4  # sd-cli accepts repeated -r; to verify in Phase 4
+    max_reference_images: 4  # sd-cli: repeated -r, flux2 preset (docs/guides/edit.md @532d2c1)
     prompt_notes: >-
       English prompt. Structure: subject, scene, composition, lighting, style.
-      With reference images, describe the change to make.
+      With reference images, describe the change to make ("make the jacket blue",
+      "the person from image 1 in the room of image 2"). Without a size, the output
+      keeps the shape of the first reference.
     files:
       diffusion_model:
         repo: unsloth/FLUX.2-klein-4B-GGUF

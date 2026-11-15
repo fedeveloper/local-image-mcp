@@ -91,6 +91,27 @@ For each image, the backend:
 
 Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
 
+## Reference images (FLUX.2 klein)
+
+`flux2-klein-4b` has the capabilities `reference` and `edit`. Give up to 4 images
+(`--ref` in the CLI, `reference_images` in the MCP tool). The backend passes each one
+with `-r`. sd-cli selects the `flux2` reference preset by itself (VAE-encoded references
+go to the DiT, reference index `increase`; see `docs/guides/edit.md` at commit
+`532d2c1`), so no extra option is necessary.
+
+- Formats: PNG, JPEG, WebP, BMP.
+- Relative paths start at the project directory.
+- Without `width` and `height`, the output keeps the aspect ratio of the first reference,
+  at about the default pixel count of the model, inside the model limits.
+- The sidecar JSON records the path and the SHA-256 of each reference.
+
+Example:
+
+```sh
+uv run local-image generate -m flux2-klein-4b --seed 42 --ref photo.jpg \
+  -p "Make the jacket bright blue. Keep the face, the pose and the background."
+```
+
 ## Backend options (registry `backend_options`)
 
 | Option | Default | Effect |

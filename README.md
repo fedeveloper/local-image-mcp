@@ -1,7 +1,7 @@
 # local-image-mcp
 
-> **Status: early development (Phase 3 of 7).** The core, the model registry, the CLI,
-> the stable-diffusion.cpp backend and the MCP server work. See [PLAN.md](PLAN.md).
+> **Status: early development (Phase 4 of 7).** The core, the model registry, the CLI,
+> the stable-diffusion.cpp backend, the MCP server and reference images (FLUX.2 klein) work. See [PLAN.md](PLAN.md).
 
 `local-image-mcp` connects Claude Code (and other MCP clients) to image generation models
 that run on your own GPU. Claude does the reasoning. When a project needs an image, it
