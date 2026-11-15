@@ -4,6 +4,15 @@ All notable changes are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Server mode for the `sdcpp` backend (`LOCAL_IMAGE_SD_MODE=server`): one `sd-server`
+  process keeps the model loaded between images, restarts when the model changes, and
+  stops after an idle grace period (`LOCAL_IMAGE_SD_SERVER_IDLE`, default 120 s).
+- `local-image doctor` shows the sd mode and the `sd-server` path.
+
 ## [0.1.0rc1] - 2026-11-15
 
 First release candidate.

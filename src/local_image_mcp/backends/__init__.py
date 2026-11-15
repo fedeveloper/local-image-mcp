@@ -14,7 +14,14 @@ def create_backends(settings: Settings) -> dict[str, Backend]:
     """Create one instance of each known backend."""
     return {
         "fake": FakeBackend(),
-        "sdcpp": SdCppBackend(binary=settings.sd_binary, log_dir=settings.state_dir / "logs"),
+        "sdcpp": SdCppBackend(
+            binary=settings.sd_binary,
+            log_dir=settings.state_dir / "logs",
+            mode=settings.sd_mode,
+            server_binary=settings.sd_server_binary,
+            idle_unload_s=settings.sd_server_idle_s,
+            server_model_dir=settings.state_dir / "sd-server-models",
+        ),
         "diffusers": DiffusersBackend(),
         "comfyui": ComfyUIBackend(),
     }

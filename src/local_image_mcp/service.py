@@ -230,6 +230,22 @@ class ImageService:
             )
         return tuple(check_reference_image(p, self.settings.project_dir) for p in images)
 
+    # ------------------------------------------------------------ lifecycle
+
+    async def on_queue_empty(self) -> None:
+        """Tell the backends that no job is waiting (sd-server can unload its model)."""
+        for backend in self.backends.values():
+            hook = getattr(backend, "on_queue_empty", None)
+            if hook is not None:
+                await hook()
+
+    async def aclose(self) -> None:
+        """Stop the processes that the backends keep running (for example sd-server)."""
+        for backend in self.backends.values():
+            hook = getattr(backend, "aclose", None)
+            if hook is not None:
+                await hook()
+
     # --------------------------------------------------------------------- run
 
     async def run(

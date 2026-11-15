@@ -113,6 +113,44 @@ uv run local-image generate -m flux2-klein-4b --seed 42 --ref photo.jpg \
   -p "Make the jacket bright blue. Keep the face, the pose and the background."
 ```
 
+## Server mode (sd-server)
+
+By default, the backend starts `sd-cli` for each image, so each image loads the model
+again. In server mode, the backend runs `sd-server` (in the same release archive as
+`sd-cli`) and keeps the model loaded between images.
+
+- The first job starts `sd-server` with the model files of the job. It listens on
+  `127.0.0.1` only, on a free port.
+- The next jobs with the same model and the same options use the loaded model.
+- A job with a different model (or different options) restarts `sd-server`.
+- When no job waits, `sd-server` stops after a grace period (default 120 s), and the
+  GPU memory is free again. The grace period exists because Claude sends jobs one after
+  the other, and the queue is empty for a short time between two jobs.
+- Cancel sends a cancel request to `sd-server`. If the job does not stop within 30 s,
+  the backend terminates `sd-server`.
+
+The backend uses the native asynchronous API of `sd-server` (`/sdcpp/v1/img_gen`,
+`/sdcpp/v1/jobs/{id}`, `/sdcpp/v1/jobs/{id}/cancel`, `/sdcpp/v1/models/status`),
+verified at commit `532d2c1`.
+
+To enable it:
+
+1. Make sure that `sd-server` (`sd-server.exe` on Windows) is next to `sd-cli`, or set
+   `LOCAL_IMAGE_SD_SERVER_BINARY` to its full path.
+2. Set `LOCAL_IMAGE_SD_MODE=server`. For Claude Code, add
+   `-e LOCAL_IMAGE_SD_MODE=server` to `claude mcp add`.
+3. Optional: set `LOCAL_IMAGE_SD_SERVER_IDLE` to the grace period in seconds
+   (`0` stops `sd-server` as soon as the queue is empty).
+4. Run `uv run local-image doctor`. It shows `sd mode: server` and the `sd-server` path.
+
+NOTE: While `sd-server` waits in the grace period, it keeps its GPU memory. Another
+`local-image-mcp` process (for example a second Claude Code session) can start a job in
+that time and run out of memory. Use `LOCAL_IMAGE_SD_SERVER_IDLE=0` if you often run
+several sessions at the same time.
+
+The output of `sd-server` goes to `<state dir>/logs/sd-server.log`. The sidecar JSON has
+`backend.options.mode = "server"` and the generation record of `sd-server`.
+
 ## Backend options (registry `backend_options`)
 
 | Option | Default | Effect |
@@ -122,7 +160,8 @@ uv run local-image generate -m flux2-klein-4b --seed 42 --ref photo.jpg \
 | `text_encoder_on_cpu` | `false` (built-in models: `true`) | `--backend te=cpu`: run the text encoder on the CPU. Needed for the ~8 GB diffusers text encoders on an 8 GB GPU. |
 | `flash_attn` | not set | `--flash-attn on\|off\|auto` (sd-cli default: `auto`). |
 | `timeout_s` | `1800` | Stop the job after this many seconds. |
-| `extra_args` | `[]` | Extra `sd-cli` arguments, passed as they are. |
+| `server_start_timeout_s` | `600` | Server mode: maximum time for `sd-server` to load the model. |
+| `extra_args` | `[]` | Extra `sd-cli` arguments, passed as they are (in server mode, they go to `sd-server`). |
 
 ## Troubleshooting
 

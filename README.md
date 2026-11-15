@@ -83,6 +83,10 @@ timeout setting is necessary: the generation runs in a background job.
 
 More details, build options and troubleshooting: [docs/backends/sdcpp.md](docs/backends/sdcpp.md).
 
+For several images in a row, enable the server mode (`LOCAL_IMAGE_SD_MODE=server`): the
+model stays loaded in `sd-server` between images. See
+[server mode](docs/backends/sdcpp.md#server-mode-sd-server).
+
 ## Get the models
 
 1. See which files are already in your Hugging Face cache:

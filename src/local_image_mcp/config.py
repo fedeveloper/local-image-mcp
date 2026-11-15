@@ -12,6 +12,12 @@ Environment variables:
 - ``LOCAL_IMAGE_ALLOWED_ROOTS``: extra directories where output files are allowed,
   separated by ``os.pathsep`` (``;`` on Windows, ``:`` on Linux).
 - ``LOCAL_IMAGE_SD_BINARY``: path of the stable-diffusion.cpp ``sd-cli`` executable.
+- ``LOCAL_IMAGE_SD_MODE``: ``cli`` (default: one ``sd-cli`` process per image) or
+  ``server`` (one ``sd-server`` process keeps the model loaded between images).
+- ``LOCAL_IMAGE_SD_SERVER_BINARY``: path of ``sd-server``. Default: next to ``sd-cli``,
+  else ``sd-server`` on ``PATH``.
+- ``LOCAL_IMAGE_SD_SERVER_IDLE``: seconds to keep ``sd-server`` (and the model) loaded
+  after the queue becomes empty. Default: 120. ``0`` stops it at once.
 
 The Hugging Face cache location comes from ``HF_HUB_CACHE``, else ``HF_HOME/hub``, else the
 ``huggingface_hub`` default. ``from_env`` reads these variables itself on each call, because
@@ -27,6 +33,8 @@ from pathlib import Path
 
 import platformdirs
 
+from local_image_mcp.errors import InvalidRequestError
+
 APP_NAME = "local-image-mcp"
 DEFAULT_OUTPUT_DIR_NAME = "generated-images"
 
@@ -40,6 +48,9 @@ class Settings:
     user_registry: Path | None = None
     hf_cache_dir: Path | None = None
     sd_binary: str | None = None
+    sd_mode: str = "cli"
+    sd_server_binary: str | None = None
+    sd_server_idle_s: float = 120.0
 
     @property
     def jobs_dir(self) -> Path:
@@ -95,7 +106,29 @@ class Settings:
             user_registry=user_registry,
             hf_cache_dir=_hf_cache_dir(env),
             sd_binary=env.get("LOCAL_IMAGE_SD_BINARY") or None,
+            sd_mode=_sd_mode(env.get("LOCAL_IMAGE_SD_MODE")),
+            sd_server_binary=env.get("LOCAL_IMAGE_SD_SERVER_BINARY") or None,
+            sd_server_idle_s=_seconds(env.get("LOCAL_IMAGE_SD_SERVER_IDLE"), 120.0),
         )
+
+
+def _sd_mode(value: str | None) -> str:
+    mode = (value or "cli").strip().lower()
+    if mode not in ("cli", "server"):
+        raise InvalidRequestError(f"LOCAL_IMAGE_SD_MODE must be 'cli' or 'server', not {value!r}")
+    return mode
+
+
+def _seconds(value: str | None, default: float) -> float:
+    if not value:
+        return default
+    try:
+        seconds = float(value)
+    except ValueError:
+        seconds = -1.0
+    if seconds < 0:
+        raise InvalidRequestError(f"Expected a number of seconds >= 0, not {value!r}.")
+    return seconds
 
 
 def _hf_cache_dir(env: Mapping[str, str]) -> Path | None:
