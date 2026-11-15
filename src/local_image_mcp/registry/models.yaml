@@ -1,0 +1,109 @@
+# Built-in model registry for local-image-mcp.
+#
+# Every repository and file name below was checked against the Hugging Face file
+# listings on 2026-11-15. Override or extend this file with a user registry
+# (see LOCAL_IMAGE_REGISTRY). Licenses apply to the model weights, not to this code.
+schema_version: 1
+models:
+  z-image-turbo:
+    display_name: Z-Image-Turbo (Q4_K_M)
+    backend: sdcpp
+    capabilities: [text2img]
+    license: apache-2.0
+    license_url: https://huggingface.co/Tongyi-MAI/Z-Image-Turbo
+    vram_estimate_gb: 7.0  # estimate; to measure in Phase 2
+    supports_negative_prompt: false
+    prompt_notes: >-
+      English prompt. Structure: subject, scene, composition, lighting, style.
+      No negative prompt: write constraints in the prompt itself.
+    files:
+      diffusion_model:
+        repo: unsloth/Z-Image-Turbo-GGUF
+        filename: z-image-turbo-Q4_K_M.gguf
+        license: apache-2.0
+      text_encoder:
+        repo: unsloth/Qwen3-4B-Instruct-2507-GGUF
+        filename: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
+        license: apache-2.0
+      vae:
+        repo: Comfy-Org/z_image_turbo
+        filename: split_files/vae/ae.safetensors
+        license: apache-2.0
+        alternatives:
+          - repo: black-forest-labs/FLUX.1-schnell
+            filename: ae.safetensors
+            license: apache-2.0
+    defaults:
+      width: 1024
+      height: 1024
+      steps: 8
+      cfg_scale: 1.0  # sd.cpp meaning: 1.0 = no CFG (diffusers guidance_scale=0)
+    limits:
+      min_size: 256
+      max_size: 2048
+      size_multiple: 16
+      max_pixels: 1572864  # 1536 x 1024; to tune for 8 GB VRAM in Phase 2
+      min_steps: 1
+      max_steps: 16
+    backend_options:
+      offload_to_cpu: true
+
+  flux2-klein-4b:
+    display_name: FLUX.2 klein 4B (Q4_K_M)
+    backend: sdcpp
+    capabilities: [text2img, reference, edit]
+    license: apache-2.0
+    license_url: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
+    vram_estimate_gb: 6.0  # estimate; to measure in Phase 4
+    supports_negative_prompt: false
+    max_reference_images: 4  # sd-cli accepts repeated -r; to verify in Phase 4
+    prompt_notes: >-
+      English prompt. Structure: subject, scene, composition, lighting, style.
+      With reference images, describe the change to make.
+    files:
+      diffusion_model:
+        repo: unsloth/FLUX.2-klein-4B-GGUF
+        filename: flux-2-klein-4b-Q4_K_M.gguf
+        license: apache-2.0
+      text_encoder:
+        repo: unsloth/Qwen3-4B-GGUF
+        filename: Qwen3-4B-Q4_K_M.gguf
+        license: apache-2.0
+      vae:
+        repo: Comfy-Org/flux2-klein-4B
+        filename: split_files/vae/flux2-vae.safetensors
+        license: apache-2.0
+    defaults:
+      width: 1024
+      height: 1024
+      steps: 4
+      cfg_scale: 1.0
+      sampling_method: euler
+    limits:
+      min_size: 256
+      max_size: 2048
+      size_multiple: 16
+      max_pixels: 1572864
+      min_steps: 1
+      max_steps: 16
+    backend_options:
+      offload_to_cpu: true
+
+  fake:
+    display_name: Fake model (solid colour, no GPU; for tests)
+    backend: fake
+    capabilities: [text2img, reference, edit]
+    license: apache-2.0
+    supports_negative_prompt: true
+    max_reference_images: 4
+    defaults:
+      width: 256
+      height: 256
+      steps: 4
+      cfg_scale: 1.0
+    limits:
+      min_size: 16
+      max_size: 2048
+      size_multiple: 16
+      min_steps: 1
+      max_steps: 50

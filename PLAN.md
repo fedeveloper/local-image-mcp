@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 in progress.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (see §13). Next: Phase 2.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -279,23 +279,26 @@ class Capability(StrEnum):
     REFERENCE = "reference"
     EDIT = "edit"
 
+
 @dataclass(frozen=True)
 class GenerationRequest:
     prompt: str
     model_id: str
-    width: int | None = None          # None -> registry default
+    width: int | None = None  # None -> registry default
     height: int | None = None
-    seed: int | None = None           # None -> random, then recorded
+    seed: int | None = None  # None -> random, then recorded
     steps: int | None = None
     cfg_scale: float | None = None
     negative_prompt: str | None = None
     reference_images: tuple[Path, ...] = ()
-    output_path: Path | None = None   # file or directory; None -> default output dir
+    output_path: Path | None = None  # file or directory; None -> default output dir
+
 
 @dataclass(frozen=True)
-class ResolvedModel:                  # registry entry + absolute local file paths
+class ResolvedModel:  # registry entry + absolute local file paths
     spec: ModelSpec
-    files: dict[str, ResolvedFile]    # role -> path, repo, filename, revision, size
+    files: dict[str, ResolvedFile]  # role -> path, repo, filename, revision, size
+
 
 @dataclass(frozen=True)
 class GenerationResult:
@@ -305,7 +308,7 @@ class GenerationResult:
     duration_s: float
     backend_name: str
     backend_version: str
-    backend_record: dict | None       # e.g. sdcpp.generation/v1 JSON
+    backend_record: dict | None  # e.g. sdcpp.generation/v1 JSON
 ```
 
 ```python
@@ -316,13 +319,15 @@ class ProgressEvent(NamedTuple):
     total_steps: int | None
     message: str | None
 
+
 class Backend(Protocol):
     name: str
+
     def version(self) -> str: ...
-    def check(self) -> BackendHealth: ...               # binary found? version? GPU?
+    def check(self) -> BackendHealth: ...  # binary found? version? GPU?
     async def generate(
         self,
-        request: GenerationRequest,        # already validated and filled with defaults
+        request: GenerationRequest,  # already validated and filled with defaults
         model: ResolvedModel,
         output_file: Path,
         on_progress: Callable[[ProgressEvent], None],
@@ -349,7 +354,7 @@ downloads by default, so a tool call never starts a multi-GB transfer.
 class JobQueue:
     async def submit(self, request: GenerationRequest) -> Job: ...  # validates first
     def get(self, job_id: str) -> Job: ...
-    async def wait(self, job_id: str, timeout_s: float) -> Job: ... # long-poll helper
+    async def wait(self, job_id: str, timeout_s: float) -> Job: ...  # long-poll helper
     async def cancel(self, job_id: str) -> Job: ...
 ```
 
@@ -530,6 +535,23 @@ descriptive and easy to find. Use the CLI name `local-image`.
 | 11 | Name | Keep `local-image-mcp`. |
 
 Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
+
+## 13. Phase 1 notes (implementation choices)
+
+- `service.ImageService` holds validation, defaults, file resolution and one run.
+  The CLI and (in Phase 3) the MCP server use it through `jobs.JobQueue`.
+- The built-in registry also has a `fake` model (backend `fake`, no files) for tests,
+  CI and a quick smoke test without a GPU.
+- `sdcpp`, `diffusers` and `comfyui` are placeholder backends that report
+  "not available". `prepare()` checks the backend before it checks the model files.
+- Job records are JSON files in `<state_dir>/jobs/`. Each live process holds
+  `<state_dir>/jobs/owners/<pid>.lock`. At start, a queue marks only the unfinished
+  jobs of dead processes as failed, so two Claude Code sessions do not break each other.
+- Output files: `.png` only. The final name is chosen just before the run, so two
+  queued jobs never write the same file. An image or a sidecar with the same name is
+  never overwritten.
+- Reference images in the sidecar carry a SHA-256, so a replay can detect a changed input.
+- The CLI has no extra dependency (argparse). The fake PNG uses only the standard library.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
