@@ -1,0 +1,44 @@
+# User model registry for local-image-mcp.
+#
+# This file adds models to the built-in registry, or replaces them.
+# - A model with a new id adds a model.
+# - A model with the id of a built-in model (z-image-turbo, flux2-klein-4b) replaces the
+#   whole built-in entry. Copy the full entry first: run `local-image models list --json`
+#   or see the built-in models.yaml in the repository.
+# - `<id>: null` removes a built-in model.
+#
+# Each file is a Hugging Face file (`repo` + `filename`, looked up in your HF cache)
+# or a local file (`path`). The first candidate found wins: the main entry, then the
+# `alternatives` in order. LOCAL_IMAGE_QUANT (for example Q8_0) moves the candidates with
+# that quantization to the front.
+#
+# Check the result with `local-image models check`. Restart Claude Code after a change:
+# the MCP server reads the registry only when it starts.
+schema_version: 1
+models: {}
+
+# Example 1: Z-Image-Turbo from GGUF files that are not in the built-in list.
+# Remove "models: {}" above, then remove the "# " in front of the lines below.
+#
+# models:
+#   my-z-image:
+#     display_name: Z-Image-Turbo (my files)
+#     backend: sdcpp
+#     capabilities: [text2img]
+#     license: apache-2.0
+#     files:
+#       diffusion_model:
+#         path: D:/models/z-image-turbo-Q3_K_S.gguf      # a local file
+#       text_encoder:
+#         repo: unsloth/Qwen3-4B-Instruct-2507-GGUF       # a file in the HF cache
+#         filename: Qwen3-4B-Instruct-2507-Q8_0.gguf
+#       vae:
+#         repo: Comfy-Org/z_image_turbo
+#         filename: split_files/vae/ae.safetensors
+#     defaults: {width: 1024, height: 1024, steps: 8, cfg_scale: 1.0}
+#     limits: {min_size: 256, max_size: 2048, size_multiple: 16, max_steps: 16}
+#     backend_options: {offload_to_cpu: true, text_encoder_on_cpu: true}
+#
+# Example 2: hide a built-in model.
+#
+#   flux2-klein-4b: null

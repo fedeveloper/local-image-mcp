@@ -7,6 +7,7 @@ import asyncio
 import json
 import sys
 from collections.abc import Sequence
+from importlib import resources
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -14,7 +15,7 @@ from huggingface_hub import constants as hf_constants
 
 from local_image_mcp import __version__, claude_code
 from local_image_mcp.backends.sdcpp import SdCppBackend, find_binary, find_server_binary
-from local_image_mcp.config import Settings
+from local_image_mcp.config import Settings, default_user_registry
 from local_image_mcp.errors import LocalImageError
 from local_image_mcp.jobs import GpuLock, Job, JobQueue, JobState, JobStore
 from local_image_mcp.metadata import read_sidecar
@@ -43,6 +44,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--json", action="store_true", help="print JSON")
     p = models_sub.add_parser("pull", help="download the missing files of a model")
     p.add_argument("model", help="model id")
+    p.add_argument(
+        "--quant", help="quantization to download, for example Q8_0 (default: the first file)"
+    )
+    p = models_sub.add_parser(
+        "init-registry", help="create a user registry file with comments and examples"
+    )
+    p.add_argument("--force", action="store_true", help="replace an existing file")
 
     gen = sub.add_parser("generate", help="generate one image")
     gen.add_argument("-p", "--prompt", required=True)
@@ -87,6 +95,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         settings = Settings.from_env()
         if args.command == "claude":
             return _claude(args, settings)
+        if args.command == "models" and args.models_command == "init-registry":
+            return _models_init_registry(settings, force=args.force)
         service = ImageService(settings)
         return _dispatch(args, settings, service)
     except LocalImageError as exc:
@@ -105,7 +115,7 @@ def _dispatch(args: argparse.Namespace, settings: Settings, service: ImageServic
             return _models_list(service, as_json=args.json)
         if sub == "check":
             return _models_check(service, args.model, as_json=args.json)
-        return _models_pull(service, args.model)
+        return _models_pull(service, args.model, args.quant)
     if command == "generate":
         request = GenerationRequest(
             prompt=args.prompt,
@@ -189,13 +199,37 @@ def _models_check(service: ImageService, model_id: str | None, *, as_json: bool)
     return EXIT_OK if all(r.available for r in results) else EXIT_ERROR
 
 
-def _models_pull(service: ImageService, model_id: str) -> int:
+def _models_pull(service: ImageService, model_id: str, quant: str | None) -> int:
     spec = service.model(model_id)
     resolved = service.resolver.pull(
-        spec, on_file=lambda role, src: print(f"downloading {role}: {src}", file=sys.stderr)
+        spec,
+        quant=quant,
+        on_file=lambda role, src: print(f"downloading {role}: {src}", file=sys.stderr),
     )
     for role, f in resolved.files.items():
         print(f"{role}: {f.path}")
+    if quant and quant != service.resolver.prefer_quant:
+        print(
+            f"note: if other quantizations of '{model_id}' are in the cache too, set "
+            f"LOCAL_IMAGE_QUANT={quant} to use this one.",
+            file=sys.stderr,
+        )
+    return EXIT_OK
+
+
+USER_TEMPLATE = "user_models_template.yaml"
+
+
+def _models_init_registry(settings: Settings, *, force: bool) -> int:
+    target = settings.user_registry or default_user_registry()
+    if target.exists() and not force:
+        print(f"error: {target} exists. Use --force to replace it.", file=sys.stderr)
+        return EXIT_ERROR
+    target.parent.mkdir(parents=True, exist_ok=True)
+    text = resources.files("local_image_mcp.registry").joinpath(USER_TEMPLATE).read_text("utf-8")
+    target.write_text(text, encoding="utf-8")
+    print(f"created {target}")
+    print("Edit it, then run: local-image models check")
     return EXIT_OK
 
 
@@ -294,8 +328,10 @@ def _doctor(settings: Settings, service: ImageService) -> int:
     print(f"output dir:      {settings.output_dir}")
     print(f"allowed roots:   {', '.join(str(r) for r in settings.allowed_roots)}")
     print(f"state dir:       {settings.state_dir}")
-    print(f"user registry:   {settings.user_registry or '(none)'}")
+    registry_hint = f"(none; local-image models init-registry creates {default_user_registry()})"
+    print(f"user registry:   {settings.user_registry or registry_hint}")
     print(f"HF cache:        {settings.hf_cache_dir or hf_constants.HF_HUB_CACHE}")
+    print(f"preferred quant: {settings.quant or '(none: registry order)'}")
     cli_binary = find_binary(settings.sd_binary)
     print(f"sd-cli:          {cli_binary or '(not found)'}")
     sdcpp_backend = service.backends.get("sdcpp")

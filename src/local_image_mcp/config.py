@@ -19,6 +19,8 @@ Environment variables:
   else ``sd-server`` on ``PATH``.
 - ``LOCAL_IMAGE_SD_SERVER_IDLE``: seconds to keep ``sd-server`` (and the model) loaded
   after the queue becomes empty. Default: 120. ``0`` stops it at once.
+- ``LOCAL_IMAGE_QUANT``: preferred quantization (for example ``Q8_0``). Files with this
+  quantization in the name come first; the other files of the registry stay as fallbacks.
 
 The Hugging Face cache location comes from ``HF_HUB_CACHE``, else ``HF_HOME/hub``, else the
 ``huggingface_hub`` default. ``from_env`` reads these variables itself on each call, because
@@ -52,6 +54,7 @@ class Settings:
     sd_mode: str = "auto"
     sd_server_binary: str | None = None
     sd_server_idle_s: float = 120.0
+    quant: str | None = None
 
     @property
     def jobs_dir(self) -> Path:
@@ -93,9 +96,7 @@ class Settings:
 
         user_registry = _path(env.get("LOCAL_IMAGE_REGISTRY"))
         if user_registry is None:
-            candidate = (
-                Path(platformdirs.user_config_dir(APP_NAME, appauthor=False)) / "models.yaml"
-            )
+            candidate = default_user_registry()
             if candidate.is_file():
                 user_registry = candidate
 
@@ -110,7 +111,13 @@ class Settings:
             sd_mode=_sd_mode(env.get("LOCAL_IMAGE_SD_MODE")),
             sd_server_binary=env.get("LOCAL_IMAGE_SD_SERVER_BINARY") or None,
             sd_server_idle_s=_seconds(env.get("LOCAL_IMAGE_SD_SERVER_IDLE"), 120.0),
+            quant=(env.get("LOCAL_IMAGE_QUANT") or "").strip() or None,
         )
+
+
+def default_user_registry() -> Path:
+    """``<user config dir>/models.yaml``: read when it exists and no LOCAL_IMAGE_REGISTRY."""
+    return Path(platformdirs.user_config_dir(APP_NAME, appauthor=False)) / "models.yaml"
 
 
 def _sd_mode(value: str | None) -> str:

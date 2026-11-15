@@ -14,6 +14,10 @@ All notable changes are listed here. The format follows
 - `LOCAL_IMAGE_SD_MODE`: `auto` (default; server mode when `sd-server` is found),
   `cli` or `server`.
 - `local-image doctor` shows the sd mode and the `sd-server` path.
+- `LOCAL_IMAGE_QUANT`: preferred quantization when several are in the cache.
+- `local-image models pull <model> --quant <Q>`: download a chosen quantization.
+- `local-image models init-registry`: create a commented user registry with an example.
+- Docs: [docs/models.md](docs/models.md) (other quantizations, files and models).
 
 ### Tested
 

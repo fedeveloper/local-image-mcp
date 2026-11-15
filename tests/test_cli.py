@@ -70,3 +70,36 @@ def test_doctor(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["doctor"]) == cli.EXIT_OK
     out = capsys.readouterr().out
     assert "fake: available" in out and "sdcpp: not available" in out
+
+
+def test_init_registry_creates_a_valid_template(
+    env: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from local_image_mcp.registry.loader import load_registry
+
+    target = tmp_path / "config" / "models.yaml"
+    monkeypatch.setenv("LOCAL_IMAGE_REGISTRY", str(target))
+    assert cli.main(["models", "init-registry"]) == cli.EXIT_OK
+    assert str(target) in capsys.readouterr().out
+    registry = load_registry(target)
+    assert "z-image-turbo" in registry.models  # the empty template keeps the built-ins
+
+    assert cli.main(["models", "init-registry"]) == cli.EXIT_ERROR
+    assert "--force" in capsys.readouterr().err
+    assert cli.main(["models", "init-registry", "--force"]) == cli.EXIT_OK
+
+    # The commented example 1 must be a valid registry once it is uncommented.
+    lines = target.read_text(encoding="utf-8").splitlines()
+    start = lines.index("# models:")
+    end = next(i for i, line in enumerate(lines) if line.startswith("# Example 2"))
+    example = [line[2:] for line in lines[start:end] if line.startswith("# ")]
+    target.write_text("schema_version: 1\n" + "\n".join(example) + "\n", encoding="utf-8")
+    spec = load_registry(target).models["my-z-image"]
+    assert spec.files["diffusion_model"].path is not None
+    assert spec.defaults.steps == 8
+
+
+def test_pull_unknown_quant_is_an_error(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["models", "pull", "z-image-turbo", "--quant", "Q2_K"]) == cli.EXIT_ERROR
+    err = capsys.readouterr().err
+    assert "Q2_K" in err and "z-image-turbo-Q8_0.gguf" in err

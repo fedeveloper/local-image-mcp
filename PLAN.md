@@ -665,6 +665,22 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Tests: `tests/fake_sd_server.py` (stand-in for the native API) and
   `tests/test_sdcpp_server.py`.
 
+## 20. Other quantizations and models (after Phase 7)
+
+Federico asked how other users with other models or quantizations use the repository.
+Choice:
+
+- Keep the automatic fallback (first cached candidate) as the base.
+- `LOCAL_IMAGE_QUANT` reorders candidates by quantization token (whole token, any case);
+  no match keeps the registry order.
+- `models pull --quant`: download that quantization even when another one is cached;
+  an unknown quantization lists the known files.
+- `models init-registry`: writes a commented user registry (`models: {}`) with a
+  complete, tested example, to `LOCAL_IMAGE_REGISTRY` or the user config folder.
+- No automatic scan of the cache for unknown GGUF files: the registry stays explicit, so
+  the server never guesses a file or a model architecture.
+- Guide: `docs/models.md`.
+
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
 I built the binary from source in a Linux container (CPU only) to read the real help text. Your Windows CUDA build may differ if the version differs.
