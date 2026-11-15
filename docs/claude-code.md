@@ -85,7 +85,7 @@ style to use.
 | Variable | Meaning |
 |---|---|
 | `LOCAL_IMAGE_SD_BINARY` | Path of `sd-cli` (if it is not on `PATH`). |
-| `LOCAL_IMAGE_SD_MODE` | `cli` (default) or `server`: keep the model loaded in `sd-server` between images. See [backends/sdcpp.md](backends/sdcpp.md#server-mode-sd-server). |
+| `LOCAL_IMAGE_SD_MODE` | `auto` (default: `server` when `sd-server` is found), `cli` or `server`. Server mode keeps the model loaded between images. See [backends/sdcpp.md](backends/sdcpp.md#server-mode-sd-server). |
 | `LOCAL_IMAGE_SD_SERVER_BINARY` | Path of `sd-server`. Default: next to `sd-cli`, else `PATH`. |
 | `LOCAL_IMAGE_SD_SERVER_IDLE` | Server mode: seconds to keep the model loaded after the last job (default `120`). |
 | `HF_HUB_CACHE` / `HF_HOME` | Hugging Face cache location. |

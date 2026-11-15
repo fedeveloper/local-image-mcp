@@ -115,9 +115,16 @@ uv run local-image generate -m flux2-klein-4b --seed 42 --ref photo.jpg \
 
 ## Server mode (sd-server)
 
-By default, the backend starts `sd-cli` for each image, so each image loads the model
+In CLI mode, the backend starts `sd-cli` for each image, so each image loads the model
 again. In server mode, the backend runs `sd-server` (in the same release archive as
-`sd-cli`) and keeps the model loaded between images.
+`sd-cli`) and keeps the model loaded between images. On the test PC, the second and the
+next images with the same model take about 14 s instead of 22 s.
+
+`LOCAL_IMAGE_SD_MODE` selects the mode:
+
+- `auto` (default): server mode when `sd-server` is found, else CLI mode;
+- `cli`: always `sd-cli`;
+- `server`: always `sd-server` (the backend is not available without it).
 
 - The first job starts `sd-server` with the model files of the job. It listens on
   `127.0.0.1` only, on a free port.
@@ -133,15 +140,17 @@ The backend uses the native asynchronous API of `sd-server` (`/sdcpp/v1/img_gen`
 `/sdcpp/v1/jobs/{id}`, `/sdcpp/v1/jobs/{id}/cancel`, `/sdcpp/v1/models/status`),
 verified at commit `532d2c1`.
 
-To enable it:
+To use it:
 
 1. Make sure that `sd-server` (`sd-server.exe` on Windows) is next to `sd-cli`, or set
    `LOCAL_IMAGE_SD_SERVER_BINARY` to its full path.
-2. Set `LOCAL_IMAGE_SD_MODE=server`. For Claude Code, add
-   `-e LOCAL_IMAGE_SD_MODE=server` to `claude mcp add`.
-3. Optional: set `LOCAL_IMAGE_SD_SERVER_IDLE` to the grace period in seconds
+2. Optional: set `LOCAL_IMAGE_SD_SERVER_IDLE` to the grace period in seconds
    (`0` stops `sd-server` as soon as the queue is empty).
-4. Run `uv run local-image doctor`. It shows `sd mode: server` and the `sd-server` path.
+3. Run `uv run local-image doctor`. It shows `sd mode: auto (server)` and the
+   `sd-server` path.
+
+To go back to one `sd-cli` process per image, set `LOCAL_IMAGE_SD_MODE=cli` (for Claude
+Code, add `-e LOCAL_IMAGE_SD_MODE=cli` to `claude mcp add`).
 
 NOTE: While `sd-server` waits in the grace period, it keeps its GPU memory. Another
 `local-image-mcp` process (for example a second Claude Code session) can start a job in
@@ -168,6 +177,9 @@ The output of `sd-server` goes to `<state dir>/logs/sd-server.log`. The sidecar 
 - **`sd-cli not found`**: set `LOCAL_IMAGE_SD_BINARY` to the full path of `sd-cli.exe`.
 - **Out of memory**: keep `offload_to_cpu: true`, add `vae_tiling: true`, or use a smaller
   size (for example 768×768).
+- **`uv sync` fails on Windows with "file in use" (`local-image-mcp.exe`)**: a Claude Code
+  session runs the `local-image` MCP server and locks the file. Close the Claude Code
+  sessions, then run `uv sync` again.
 - **Black or white images**: see `docs/troubleshooting.md` in the stable-diffusion.cpp
   repository.
 - **The job fails**: the error message contains the `[E]` lines of `sd-cli`. The full
@@ -183,3 +195,4 @@ The output of `sd-server` goes to `<state dir>/logs/sd-server.log`. The sidecar 
 | 2026-11-15 | same | same | Z-Image-Turbo Q5_K_M with the built-in registry (no user override) | 1024×1024, 8 steps: 35.2 s; peak VRAM about 5.3 GB above the desktop baseline; progress reaches 8/8 |
 | 2026-11-15 | same | same | FLUX.2-klein-4B Q4_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/FLUX.2-klein-4B` | 1024×1024, 4 steps: 21.9 s; peak VRAM about 3.6 GB above the desktop baseline; progress reaches 4/4 |
 | 2026-11-15 | same | same | FLUX.2-klein-4B Q4_K_M, one reference image (1216×832) | edit "make the jacket blue": output 1232×848 from the reference shape, 4 steps: 25.9 s; peak VRAM about 4.6 GB above the desktop baseline; pose and background kept |
+| 2026-11-15 | same | same, `sd-server.exe` from the same release | Server mode: 3× Z-Image-Turbo, then FLUX.2 klein 4B, then Z-Image-Turbo (1024×1024, seed 42) | Z-Image: 21.8 s with model load, then 13.9 s and 14.0 s with the loaded model; model change restarts sd-server (22.2 s, 21.5 s); peak VRAM 6.3 GB; all VRAM free after the queue stops; same PNG (SHA-256) as CLI mode |

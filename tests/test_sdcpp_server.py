@@ -361,8 +361,20 @@ def test_settings_read_the_server_variables(tmp_path: Path) -> None:
     s = Settings.from_env(env, cwd=tmp_path)
     assert (s.sd_mode, s.sd_server_binary, s.sd_server_idle_s) == ("server", "/opt/sd/sd-server", 0)
     defaults = Settings.from_env({}, cwd=tmp_path)
-    assert (defaults.sd_mode, defaults.sd_server_idle_s) == ("cli", 120.0)
+    assert (defaults.sd_mode, defaults.sd_server_idle_s) == ("auto", 120.0)
     with pytest.raises(InvalidRequestError):
         Settings.from_env({"LOCAL_IMAGE_SD_MODE": "daemon"}, cwd=tmp_path)
     with pytest.raises(InvalidRequestError):
         Settings.from_env({"LOCAL_IMAGE_SD_SERVER_IDLE": "soon"}, cwd=tmp_path)
+
+
+def test_auto_mode_picks_server_when_it_is_found(tmp_path: Path) -> None:
+    exe = ".exe" if sys.platform == "win32" else ""
+    cli = tmp_path / f"sd-cli{exe}"
+    cli.write_text("")
+    assert SdCppBackend(binary=str(cli)).effective_mode() == "cli"
+    (tmp_path / f"sd-server{exe}").write_text("")
+    assert SdCppBackend(binary=str(cli)).effective_mode() == "server"
+    assert SdCppBackend(binary=str(cli), mode="cli").effective_mode() == "cli"
+    fake = SdCppBackend(command=[sys.executable, str(FAKE_CLI)])
+    assert fake.effective_mode() == "cli"

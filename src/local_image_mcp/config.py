@@ -12,8 +12,9 @@ Environment variables:
 - ``LOCAL_IMAGE_ALLOWED_ROOTS``: extra directories where output files are allowed,
   separated by ``os.pathsep`` (``;`` on Windows, ``:`` on Linux).
 - ``LOCAL_IMAGE_SD_BINARY``: path of the stable-diffusion.cpp ``sd-cli`` executable.
-- ``LOCAL_IMAGE_SD_MODE``: ``cli`` (default: one ``sd-cli`` process per image) or
-  ``server`` (one ``sd-server`` process keeps the model loaded between images).
+- ``LOCAL_IMAGE_SD_MODE``: ``auto`` (default: ``server`` when ``sd-server`` is found,
+  else ``cli``), ``cli`` (one ``sd-cli`` process per image) or ``server`` (one
+  ``sd-server`` process keeps the model loaded between images).
 - ``LOCAL_IMAGE_SD_SERVER_BINARY``: path of ``sd-server``. Default: next to ``sd-cli``,
   else ``sd-server`` on ``PATH``.
 - ``LOCAL_IMAGE_SD_SERVER_IDLE``: seconds to keep ``sd-server`` (and the model) loaded
@@ -48,7 +49,7 @@ class Settings:
     user_registry: Path | None = None
     hf_cache_dir: Path | None = None
     sd_binary: str | None = None
-    sd_mode: str = "cli"
+    sd_mode: str = "auto"
     sd_server_binary: str | None = None
     sd_server_idle_s: float = 120.0
 
@@ -113,9 +114,11 @@ class Settings:
 
 
 def _sd_mode(value: str | None) -> str:
-    mode = (value or "cli").strip().lower()
-    if mode not in ("cli", "server"):
-        raise InvalidRequestError(f"LOCAL_IMAGE_SD_MODE must be 'cli' or 'server', not {value!r}")
+    mode = (value or "auto").strip().lower()
+    if mode not in ("auto", "cli", "server"):
+        raise InvalidRequestError(
+            f"LOCAL_IMAGE_SD_MODE must be 'auto', 'cli' or 'server', not {value!r}"
+        )
     return mode
 
 

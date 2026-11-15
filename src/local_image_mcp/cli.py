@@ -13,7 +13,7 @@ from typing import Any, TextIO
 from huggingface_hub import constants as hf_constants
 
 from local_image_mcp import __version__, claude_code
-from local_image_mcp.backends.sdcpp import find_binary, find_server_binary
+from local_image_mcp.backends.sdcpp import SdCppBackend, find_binary, find_server_binary
 from local_image_mcp.config import Settings
 from local_image_mcp.errors import LocalImageError
 from local_image_mcp.jobs import GpuLock, Job, JobQueue, JobState, JobStore
@@ -298,8 +298,15 @@ def _doctor(settings: Settings, service: ImageService) -> int:
     print(f"HF cache:        {settings.hf_cache_dir or hf_constants.HF_HUB_CACHE}")
     cli_binary = find_binary(settings.sd_binary)
     print(f"sd-cli:          {cli_binary or '(not found)'}")
-    print(f"sd mode:         {settings.sd_mode}")
-    if settings.sd_mode == "server":
+    sdcpp_backend = service.backends.get("sdcpp")
+    effective = (
+        sdcpp_backend.effective_mode()
+        if isinstance(sdcpp_backend, SdCppBackend)
+        else settings.sd_mode
+    )
+    mode_label = f"auto ({effective})" if settings.sd_mode == "auto" else settings.sd_mode
+    print(f"sd mode:         {mode_label}")
+    if effective == "server":
         server_binary = find_server_binary(settings.sd_server_binary, cli_binary)
         print(f"sd-server:       {server_binary or '(not found)'}")
         print(f"sd-server idle:  {settings.sd_server_idle_s:g} s")

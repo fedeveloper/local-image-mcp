@@ -83,9 +83,12 @@ timeout setting is necessary: the generation runs in a background job.
 
 More details, build options and troubleshooting: [docs/backends/sdcpp.md](docs/backends/sdcpp.md).
 
-For several images in a row, enable the server mode (`LOCAL_IMAGE_SD_MODE=server`): the
-model stays loaded in `sd-server` between images. See
-[server mode](docs/backends/sdcpp.md#server-mode-sd-server).
+When `sd-server` is next to `sd-cli` (it is in the same release archive), the tool uses
+it: the model stays loaded between images, so the next images are faster (about 14 s
+instead of 22 s on the test PC). See [server mode](docs/backends/sdcpp.md#server-mode-sd-server).
+
+NOTE: On Windows, close the Claude Code sessions before `uv sync`. A running
+`local-image` MCP server locks `local-image-mcp.exe`, and `uv sync` fails.
 
 ## Get the models
 

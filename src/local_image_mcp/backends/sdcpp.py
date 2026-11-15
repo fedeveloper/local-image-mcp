@@ -1,8 +1,8 @@
 """stable-diffusion.cpp backend.
 
-Two modes:
+Two modes (``auto``, the default, picks ``server`` when ``sd-server`` is found):
 
-- ``cli`` (default): runs ``sd-cli`` as a subprocess, one process per image.
+- ``cli``: runs ``sd-cli`` as a subprocess, one process per image.
 - ``server``: runs one ``sd-server`` process that keeps the model loaded between images
   (see ``sdserver.py``). The server starts at the first job, restarts when the model or the
   load options change, and stops ``idle_unload_s`` seconds after the job queue is empty.
@@ -55,7 +55,7 @@ from local_image_mcp.types import BackendOutput, ProgressEvent, ProgressStage, R
 VERIFIED_COMMIT = "532d2c1"
 BINARY_NAMES = ("sd-cli", "sd")  # "sd" is the name used by builds before the rename
 SERVER_BINARY_NAME = "sd-server"
-MODES = ("cli", "server")
+MODES = ("auto", "cli", "server")
 
 # Registry file role -> sd-cli option.
 ROLE_OPTIONS: dict[str, str] = {
@@ -123,7 +123,7 @@ class SdCppBackend:
         log_dir: Path | None = None,
         keep_logs: int = 50,
         *,
-        mode: str = "cli",
+        mode: str = "auto",
         server_binary: str | None = None,
         server_command: Sequence[str] | None = None,
         idle_unload_s: float = 120.0,
@@ -180,11 +180,21 @@ class SdCppBackend:
             )
         return [found]
 
+    def effective_mode(self) -> str:
+        """``cli`` or ``server``. ``auto`` picks ``server`` when ``sd-server`` is found."""
+        if self.mode != "auto":
+            return self.mode
+        if self._server_command is not None:
+            return "server"
+        if self._command is not None:
+            return "cli"
+        cli = find_binary(self._configured)
+        return "server" if find_server_binary(self._configured_server, cli) else "cli"
+
     def _probe(self) -> BackendHealth:
+        server_mode = self.effective_mode() == "server"
         try:
-            prefix = (
-                self.server_command_prefix() if self.mode == "server" else self.command_prefix()
-            )
+            prefix = self.server_command_prefix() if server_mode else self.command_prefix()
         except BackendNotAvailableError as exc:
             return BackendHealth(name=self.name, available=False, detail=exc.message)
         try:
@@ -209,7 +219,7 @@ class SdCppBackend:
             detail = "could not read the commit from --version"
         elif not VERIFIED_COMMIT.startswith(commit[:7]) and not commit.startswith(VERIFIED_COMMIT):
             detail = f"verified with commit {VERIFIED_COMMIT}; options may differ"
-        if self.mode == "server":
+        if server_mode:
             label = f"{label}, sd-server mode"
         return BackendHealth(name=self.name, available=True, version=label, detail=detail)
 
@@ -278,7 +288,7 @@ class SdCppBackend:
         health = self.check()
         if not health.available:
             raise BackendNotAvailableError(health.detail or "sd-cli not available")
-        if self.mode == "server":
+        if self.effective_mode() == "server":
             return await self._generate_with_server(
                 settings, model, output_file, options, on_progress, cancel, health
             )
