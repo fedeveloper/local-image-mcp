@@ -661,7 +661,7 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
   1024², seed 42: 21.8 s (load), 13.9 s, 14.0 s, 22.2 s (restart), 21.5 s (restart); peak
   VRAM 6.3 GB, all free after stop; PNG identical to CLI mode.
 - After the test: new default `LOCAL_IMAGE_SD_MODE=auto` (server when `sd-server` is
-  found, else cli), pending Federico's choice on the decision card.
+  found, else cli), chosen by Federico on 2026-11-15.
 - Tests: `tests/fake_sd_server.py` (stand-in for the native API) and
   `tests/test_sdcpp_server.py`.
 
