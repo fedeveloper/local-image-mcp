@@ -8,10 +8,17 @@ All notable changes are listed here. The format follows
 
 ### Added
 
-- Server mode for the `sdcpp` backend (`LOCAL_IMAGE_SD_MODE=server`): one `sd-server`
+- Server mode for the `sdcpp` backend: one `sd-server`
   process keeps the model loaded between images, restarts when the model changes, and
   stops after an idle grace period (`LOCAL_IMAGE_SD_SERVER_IDLE`, default 120 s).
+- `LOCAL_IMAGE_SD_MODE`: `auto` (default; server mode when `sd-server` is found),
+  `cli` or `server`.
 - `local-image doctor` shows the sd mode and the `sd-server` path.
+
+### Tested
+
+- Server mode on Windows 11, RTX 5060 8 GB, sd.cpp `5dcfa79`: Z-Image-Turbo 1024×1024
+  takes about 14 s per image with the loaded model (22 s with the model load).
 
 ## [0.1.0rc1] - 2026-11-15
 

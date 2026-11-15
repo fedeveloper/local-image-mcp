@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18). Skill installed and listed in Claude Code on Windows. Phase 7 (sd-server mode) code done (§19); next: the Windows test. The PyPI tag waits for Federico.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18). Skill installed and listed in Claude Code on Windows. Phase 7 (sd-server mode) done and tested on Windows (§19). The PyPI tag waits for Federico.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -657,7 +657,11 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Cancel and timeout send `/cancel`; after 30 s without an end, the process is killed.
 - Known limit: during the grace period, the GPU lock is free but `sd-server` still holds
   VRAM. Documented; `LOCAL_IMAGE_SD_SERVER_IDLE=0` avoids it.
-- Default mode stays `cli` until the Windows test passes.
+- Windows test passed (2026-11-15, OMEN, sd.cpp 5dcfa79): 3× Z-Image, klein, Z-Image at
+  1024², seed 42: 21.8 s (load), 13.9 s, 14.0 s, 22.2 s (restart), 21.5 s (restart); peak
+  VRAM 6.3 GB, all free after stop; PNG identical to CLI mode.
+- After the test: new default `LOCAL_IMAGE_SD_MODE=auto` (server when `sd-server` is
+  found, else cli), pending Federico's choice on the decision card.
 - Tests: `tests/fake_sd_server.py` (stand-in for the native API) and
   `tests/test_sdcpp_server.py`.
 
