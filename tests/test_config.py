@@ -33,3 +33,17 @@ def test_explicit_settings(tmp_path: Path) -> None:
 def test_cwd_fallback(tmp_path: Path) -> None:
     s = Settings.from_env({}, cwd=tmp_path)
     assert s.project_dir == tmp_path
+
+
+def test_hf_cache_from_hub_cache_variable(tmp_path: Path) -> None:
+    env = {"HF_HUB_CACHE": str(tmp_path / "hub-cache"), "HF_HOME": str(tmp_path / "home")}
+    assert Settings.from_env(env, cwd=tmp_path).hf_cache_dir == tmp_path / "hub-cache"
+
+
+def test_hf_cache_from_hf_home(tmp_path: Path) -> None:
+    env = {"HF_HOME": str(tmp_path / "home")}
+    assert Settings.from_env(env, cwd=tmp_path).hf_cache_dir == tmp_path / "home" / "hub"
+
+
+def test_hf_cache_default_is_library_default(tmp_path: Path) -> None:
+    assert Settings.from_env({}, cwd=tmp_path).hf_cache_dir is None

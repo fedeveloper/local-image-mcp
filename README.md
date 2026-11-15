@@ -49,7 +49,7 @@ uv run local-image generate --model z-image-turbo --seed 42 --prompt "A red fox 
 | Model | Capabilities | VRAM (estimate) | License of the weights |
 |---|---|---|---|
 | `z-image-turbo` (Z-Image-Turbo GGUF) | text2img | ~5.5 GB (measured) | Apache-2.0 |
-| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~5 GB (estimate) | Apache-2.0 |
+| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~4.5 GB (measured) | Apache-2.0 |
 
 Each model accepts several quantizations (Q4_K_M, Q5_K_M, Q6_K, ...) and text encoders in
 GGUF or diffusers format: the first file found in your cache is used.
