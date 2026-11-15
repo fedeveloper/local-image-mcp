@@ -1,0 +1,45 @@
+name: Release
+
+# Runs only when a version tag (for example v0.1.0rc1) is pushed.
+# Publishing uses PyPI trusted publishing: see docs/releasing.md for the one-time setup.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Check that the tag matches the package version
+        run: |
+          version=$(uv version --short)
+          test "v${version}" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
+      - name: Test
+        run: uv sync --locked && uv run pytest -q
+      - name: Build
+        run: uv build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: astral-sh/setup-uv@v7
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always dist/*

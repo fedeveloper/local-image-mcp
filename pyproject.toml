@@ -1,6 +1,6 @@
 [project]
 name = "local-image-mcp"
-version = "0.1.0.dev0"
+version = "0.1.0rc1"
 description = "MCP server and CLI that generate images with local GGUF diffusion models."
 readme = "README.md"
 license = "Apache-2.0"
@@ -9,7 +9,10 @@ requires-python = ">=3.12"
 authors = [{ name = "local-image-mcp contributors" }]
 keywords = ["mcp", "claude-code", "stable-diffusion", "gguf", "image-generation"]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Topic :: Multimedia :: Graphics",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Operating System :: Microsoft :: Windows",
@@ -24,6 +27,12 @@ dependencies = [
     "pydantic>=2.12",
     "pyyaml>=6.0.2",
 ]
+
+[project.urls]
+Homepage = "https://github.com/fedeveloper/local-image-mcp"
+Documentation = "https://github.com/fedeveloper/local-image-mcp#readme"
+Issues = "https://github.com/fedeveloper/local-image-mcp/issues"
+Changelog = "https://github.com/fedeveloper/local-image-mcp/blob/main/CHANGELOG.md"
 
 [project.scripts]
 local-image = "local_image_mcp.cli:main"

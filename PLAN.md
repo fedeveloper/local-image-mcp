@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17); next: the skill test in Claude Code.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18); next: the skill test in Claude Code, the tag, then Phase 7.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -623,6 +623,18 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - `local-image claude show-skill` and `local-image claude claude-md` print the files.
 - The skill names only real tools, models and sizes; tests check this against the
   registry, so the skill and the code cannot drift apart silently.
+
+## 18. Phase 6 notes
+
+- README rewritten: requirements, Windows and Linux install, models and cache, Claude
+  Code setup, models table with measured VRAM, model licenses, command table,
+  responsible use.
+- New: `CONTRIBUTING.md`, `CHANGELOG.md`, `examples/README.md`, `docs/releasing.md`.
+- Version `0.1.0rc1` (a test checks that `pyproject.toml` and `__version__` match);
+  PyPI URLs and classifiers.
+- `.github/workflows/release.yml`: on a `v*` tag, check the tag against the version, test,
+  build, and publish with PyPI trusted publishing (environment `pypi`). It needs the
+  one-time PyPI setup in `docs/releasing.md`. No tag is pushed without Federico's OK.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
