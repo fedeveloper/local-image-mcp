@@ -401,7 +401,7 @@ Claude Code registration (to document in `docs/claude-code.md`):
 
 ```
 claude mcp add --transport stdio --scope user local-image -- uvx local-image-mcp
-claude mcp add --transport stdio --scope user -e LOCAL_IMAGE_SD_BINARY=C:\tools\sd\sd-cli.exe local-image -- uvx local-image-mcp
+claude mcp add --transport stdio --scope user local-image -e LOCAL_IMAGE_SD_BINARY=C:\tools\sd\sd-cli.exe -- uvx local-image-mcp
 ```
 
 Optional settings to document: `MCP_TIMEOUT=30000` if the first start of `uvx` is slow.
@@ -592,6 +592,9 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
   reads them only at import time (bug found on Windows, PR #5).
 - Tests: `tests/test_server.py` uses the SDK in-process `Client` with the fake backend.
   A manual stdio test (real subprocess) passed in the cloud container.
+- Windows, 2026-11-15: the server registered at user scope shows "Connected". In
+  PowerShell 5.1 use `claude.exe` (the `claude.ps1` wrapper drops `--`) and put the server
+  name before `-e` (`-e` takes several values).
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
