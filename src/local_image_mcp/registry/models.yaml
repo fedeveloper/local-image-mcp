@@ -1,20 +1,25 @@
 # Built-in model registry for local-image-mcp.
 #
 # sdcpp entries were checked against stable-diffusion.cpp commit 532d2c1
-# (docs/models/z_image.md and docs/models/flux2.md).
+# (docs/models/z_image.md and docs/models/flux2.md), and z-image-turbo was tested on
+# Windows 11 + RTX 5060 8 GB with sd-cli commit 5dcfa79 (2026-11-15).
 #
 # Every repository and file name below was checked against the Hugging Face file
-# listings on 2026-11-15. Override or extend this file with a user registry
-# (see LOCAL_IMAGE_REGISTRY). Licenses apply to the model weights, not to this code.
+# listings on 2026-11-15. For each file, the resolver uses the first candidate that is
+# in the local cache: the main entry, then the `alternatives` in order. So any of the
+# listed quantizations works without a change here.
+#
+# Override or extend this file with a user registry (see LOCAL_IMAGE_REGISTRY).
+# Licenses apply to the model weights, not to this code.
 schema_version: 1
 models:
   z-image-turbo:
-    display_name: Z-Image-Turbo (Q4_K_M)
+    display_name: Z-Image-Turbo (GGUF)
     backend: sdcpp
     capabilities: [text2img]
     license: apache-2.0
     license_url: https://huggingface.co/Tongyi-MAI/Z-Image-Turbo
-    vram_estimate_gb: 7.0  # estimate; to measure in Phase 2
+    vram_estimate_gb: 5.5  # measured: 5.3 GB peak, Q5_K_M, 1024x1024, text encoder on CPU
     supports_negative_prompt: false
     prompt_notes: >-
       English prompt. Structure: subject, scene, composition, lighting, style.
@@ -24,18 +29,26 @@ models:
         repo: unsloth/Z-Image-Turbo-GGUF
         filename: z-image-turbo-Q4_K_M.gguf
         license: apache-2.0
+        alternatives:
+          - {repo: unsloth/Z-Image-Turbo-GGUF, filename: z-image-turbo-Q5_K_M.gguf}
+          - {repo: unsloth/Z-Image-Turbo-GGUF, filename: z-image-turbo-Q4_K_S.gguf}
+          - {repo: unsloth/Z-Image-Turbo-GGUF, filename: z-image-turbo-Q6_K.gguf}
+          - {repo: unsloth/Z-Image-Turbo-GGUF, filename: z-image-turbo-Q3_K_M.gguf}
+          - {repo: unsloth/Z-Image-Turbo-GGUF, filename: z-image-turbo-Q8_0.gguf}
       text_encoder:
-        repo: unsloth/Qwen3-4B-Instruct-2507-GGUF
-        filename: Qwen3-4B-Instruct-2507-Q4_K_M.gguf
-        license: apache-2.0
-      vae:
-        repo: Comfy-Org/z_image_turbo
-        filename: split_files/vae/ae.safetensors
+        # Diffusers layout, sharded bf16 (~8 GB): run it on the CPU (text_encoder_on_cpu).
+        repo: unsloth/Z-Image-Turbo
+        filename: text_encoder/model.safetensors.index.json
         license: apache-2.0
         alternatives:
-          - repo: black-forest-labs/FLUX.1-schnell
-            filename: ae.safetensors
-            license: apache-2.0
+          - {repo: unsloth/Qwen3-4B-Instruct-2507-GGUF, filename: Qwen3-4B-Instruct-2507-Q4_K_M.gguf}
+      vae:
+        repo: unsloth/Z-Image-Turbo
+        filename: vae/diffusion_pytorch_model.safetensors
+        license: apache-2.0
+        alternatives:
+          - {repo: Comfy-Org/z_image_turbo, filename: split_files/vae/ae.safetensors}
+          - {repo: black-forest-labs/FLUX.1-schnell, filename: ae.safetensors}
     defaults:
       width: 1024
       height: 1024
@@ -45,19 +58,20 @@ models:
       min_size: 256
       max_size: 2048
       size_multiple: 16
-      max_pixels: 1572864  # 1536 x 1024; to tune for 8 GB VRAM in Phase 2
+      max_pixels: 1572864  # 1536 x 1024
       min_steps: 1
       max_steps: 16
     backend_options:
       offload_to_cpu: true
+      text_encoder_on_cpu: true
 
   flux2-klein-4b:
-    display_name: FLUX.2 klein 4B (Q4_K_M)
+    display_name: FLUX.2 klein 4B (GGUF)
     backend: sdcpp
     capabilities: [text2img, reference, edit]
     license: apache-2.0
     license_url: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
-    vram_estimate_gb: 6.0  # estimate; to measure in Phase 4
+    vram_estimate_gb: 5.0  # estimate; to measure in Phase 4
     supports_negative_prompt: false
     max_reference_images: 4  # sd-cli accepts repeated -r; to verify in Phase 4
     prompt_notes: >-
@@ -68,14 +82,24 @@ models:
         repo: unsloth/FLUX.2-klein-4B-GGUF
         filename: flux-2-klein-4b-Q4_K_M.gguf
         license: apache-2.0
+        alternatives:
+          - {repo: unsloth/FLUX.2-klein-4B-GGUF, filename: flux-2-klein-4b-Q5_K_M.gguf}
+          - {repo: unsloth/FLUX.2-klein-4B-GGUF, filename: flux-2-klein-4b-Q4_K_S.gguf}
+          - {repo: unsloth/FLUX.2-klein-4B-GGUF, filename: flux-2-klein-4b-Q6_K.gguf}
+          - {repo: unsloth/FLUX.2-klein-4B-GGUF, filename: flux-2-klein-4b-Q8_0.gguf}
       text_encoder:
-        repo: unsloth/Qwen3-4B-GGUF
-        filename: Qwen3-4B-Q4_K_M.gguf
+        # Diffusers layout, sharded (~7.5 GB): run it on the CPU (text_encoder_on_cpu).
+        repo: unsloth/FLUX.2-klein-4B
+        filename: text_encoder/model.safetensors.index.json
         license: apache-2.0
+        alternatives:
+          - {repo: unsloth/Qwen3-4B-GGUF, filename: Qwen3-4B-Q4_K_M.gguf}
       vae:
-        repo: Comfy-Org/flux2-klein-4B
-        filename: split_files/vae/flux2-vae.safetensors
+        repo: unsloth/FLUX.2-klein-4B
+        filename: vae/diffusion_pytorch_model.safetensors
         license: apache-2.0
+        alternatives:
+          - {repo: Comfy-Org/flux2-klein-4B, filename: split_files/vae/flux2-vae.safetensors}
     defaults:
       width: 1024
       height: 1024
@@ -91,6 +115,7 @@ models:
       max_steps: 16
     backend_options:
       offload_to_cpu: true
+      text_encoder_on_cpu: true
 
   fake:
     display_name: Fake model (solid colour, no GPU; for tests)

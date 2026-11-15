@@ -5,13 +5,14 @@ Verified against stable-diffusion.cpp commit ``532d2c1`` (2026-11-15):
 Options used: ``--diffusion-model``, ``--llm``, ``--vae``, ``-m/--model``, ``--prompt-file``,
 ``--negative-prompt-file``, ``-W``, ``-H``, ``--steps``, ``--cfg-scale``, ``-s/--seed``,
 ``--sampling-method``, ``--scheduler``, ``-r/--ref-image`` (repeatable), ``--offload-to-cpu``,
-``--vae-tiling``, ``--flash-attn``, ``-o/--output``, ``--log-level``, ``--version``,
-``-M metadata --image <png> --metadata-format json``.
+``--vae-tiling``, ``--backend te=cpu``, ``--flash-attn``, ``-o/--output``, ``--log-level``,
+``--version``, ``-M metadata --image <png> --metadata-format json``.
 """
 
 from __future__ import annotations
 
 import asyncio
+import codecs
 import contextlib
 import json
 import os
@@ -22,7 +23,7 @@ import tempfile
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TextIO, cast
 
 from local_image_mcp.backends.base import BackendHealth, ProgressCallback
 from local_image_mcp.backends.sdcpp_output import SdCliOutputParser, parse_version
@@ -50,6 +51,7 @@ ROLE_OPTIONS: dict[str, str] = {
 DEFAULT_OPTIONS: dict[str, Any] = {
     "offload_to_cpu": False,
     "vae_tiling": False,
+    "text_encoder_on_cpu": False,  # "--backend te=cpu": keeps a large text encoder off the GPU
     "flash_attn": None,  # "on" | "off" | "auto" | module assignments; None = sd-cli default
     "timeout_s": 1800,
     "extra_args": [],
@@ -78,11 +80,23 @@ def find_binary(configured: str | None) -> str | None:
 class SdCppBackend:
     name = "sdcpp"
 
-    def __init__(self, binary: str | None = None, command: Sequence[str] | None = None) -> None:
-        """``command`` replaces the binary with a full command prefix (used by tests)."""
+    def __init__(
+        self,
+        binary: str | None = None,
+        command: Sequence[str] | None = None,
+        log_dir: Path | None = None,
+        keep_logs: int = 50,
+    ) -> None:
+        """``command`` replaces the binary with a full command prefix (used by tests).
+
+        ``log_dir``: if set, the raw sd-cli output of each run is saved there
+        (``<image stem>.sd-cli.log``); the newest ``keep_logs`` files are kept.
+        """
         self._configured = binary
         self._command = list(command) if command is not None else None
         self._health: BackendHealth | None = None
+        self.log_dir = log_dir
+        self.keep_logs = keep_logs
 
     # ------------------------------------------------------------------ health
 
@@ -173,6 +187,8 @@ class SdCppBackend:
             argv.append("--offload-to-cpu")
         if opts["vae_tiling"]:
             argv.append("--vae-tiling")
+        if opts["text_encoder_on_cpu"]:
+            argv += ["--backend", "te=cpu"]
         if opts["flash_attn"]:
             argv += ["--flash-attn", str(opts["flash_attn"])]
         argv += [str(a) for a in opts["extra_args"]]
@@ -206,14 +222,18 @@ class SdCppBackend:
             argv = self.build_argv(settings, model, partial, prompt_file, negative_file, options)
             parser = SdCliOutputParser(settings.steps)
             on_progress(ProgressEvent(stage=ProgressStage.LOADING))
+            log_file = self._log_path(output_file)
+            raw_log = _RawLog(log_file)
             try:
-                code = await _run(argv, parser, on_progress, cancel, timeout_s)
+                code = await _run(argv, parser, on_progress, cancel, timeout_s, raw_log)
                 if code != 0 or not partial.is_file():
+                    hint = f" Full log: {log_file}" if log_file else ""
                     raise GenerationFailedError(
-                        f"sd-cli failed (exit code {code}): {parser.error_summary()}"
+                        f"sd-cli failed (exit code {code}): {parser.error_summary()}.{hint}"
                     )
                 partial.replace(output_file)
             finally:
+                raw_log.close()
                 with contextlib.suppress(OSError):
                     partial.unlink(missing_ok=True)
 
@@ -225,7 +245,20 @@ class SdCppBackend:
             argv=_portable_argv(argv, partial, output_file),
             options={k: v for k, v in {**DEFAULT_OPTIONS, **options}.items() if v},
             native_record=native,
+            log_file=log_file,
         )
+
+    def _log_path(self, output_file: Path) -> Path | None:
+        if self.log_dir is None:
+            return None
+        try:
+            self.log_dir.mkdir(parents=True, exist_ok=True)
+            logs = sorted(self.log_dir.glob("*.sd-cli.log"), key=lambda p: p.stat().st_mtime)
+            for old in logs[: max(len(logs) - self.keep_logs + 1, 0)]:
+                old.unlink(missing_ok=True)
+        except OSError:
+            return None
+        return self.log_dir / f"{output_file.stem}.sd-cli.log"
 
     async def _read_native_record(self, image: Path) -> dict[str, Any] | None:
         """Read the ``sdcpp.generation/v1`` record that sd-cli embeds in the PNG."""
@@ -256,6 +289,7 @@ async def _run(
     on_progress: ProgressCallback,
     cancel: asyncio.Event,
     timeout_s: float,
+    raw_log: _RawLog,
 ) -> int:
     """Run sd-cli, stream its output into ``parser``, honour cancel and timeout."""
     proc = await asyncio.create_subprocess_exec(
@@ -268,12 +302,15 @@ async def _run(
     )
     assert proc.stdout is not None and proc.stderr is not None
 
-    async def pump(stream: asyncio.StreamReader) -> None:
+    async def pump(stream: asyncio.StreamReader, name: str) -> None:
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         while chunk := await stream.read(4096):
-            for event in parser.feed(chunk.decode("utf-8", errors="replace")):
+            text = decoder.decode(chunk)
+            raw_log.write(text)
+            for event in parser.feed(text, name):
                 on_progress(event)
 
-    pumps = asyncio.gather(pump(proc.stdout), pump(proc.stderr))
+    pumps = asyncio.gather(pump(proc.stdout, "stdout"), pump(proc.stderr, "stderr"))
     waiter = asyncio.ensure_future(proc.wait())
     cancelled = asyncio.ensure_future(cancel.wait())
     try:
@@ -299,6 +336,27 @@ async def _run(
         pumps.cancel()
         with contextlib.suppress(asyncio.CancelledError, Exception):
             await pumps
+
+
+class _RawLog:
+    """Best-effort copy of the raw sd-cli output, for troubleshooting."""
+
+    def __init__(self, path: Path | None) -> None:
+        self._fh: TextIO | None = None
+        if path is not None:
+            with contextlib.suppress(OSError):
+                self._fh = path.open("w", encoding="utf-8", newline="")
+
+    def write(self, text: str) -> None:
+        if self._fh is not None:
+            with contextlib.suppress(OSError):
+                self._fh.write(text)
+
+    def close(self) -> None:
+        if self._fh is not None:
+            with contextlib.suppress(OSError):
+                self._fh.close()
+            self._fh = None
 
 
 async def _stop(proc: asyncio.subprocess.Process) -> None:

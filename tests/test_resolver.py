@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -22,12 +23,32 @@ def _cache_z_image(add: CacheWriter, *, vae_from_alternative: bool = False) -> N
         add("Comfy-Org/z_image_turbo", "split_files/vae/ae.safetensors", revision=REV)
 
 
+def _index(*shards: str) -> bytes:
+    return json.dumps({"weight_map": {f"w{i}": s for i, s in enumerate(shards)}}).encode()
+
+
+SHARDS = ("model-00001-of-00002.safetensors", "model-00002-of-00002.safetensors")
+
+
+def _cache_unsloth_diffusers(add: CacheWriter, *, missing_shard: bool = False) -> None:
+    """The layout found on the Windows test PC (2026-11-15)."""
+    add("unsloth/Z-Image-Turbo-GGUF", "z-image-turbo-Q5_K_M.gguf")
+    add("unsloth/Z-Image-Turbo", "text_encoder/model.safetensors.index.json", _index(*SHARDS))
+    for shard in SHARDS[: 1 if missing_shard else 2]:
+        add("unsloth/Z-Image-Turbo", f"text_encoder/{shard}", b"12345")
+    add("unsloth/Z-Image-Turbo", "vae/diffusion_pytorch_model.safetensors")
+
+
 def test_missing_files_are_listed(hf_cache: Path, registry: Registry) -> None:
     status = ModelResolver(hf_cache).status(registry.models["z-image-turbo"])
     assert not status.available
     assert {m.role for m in status.missing} == {"diffusion_model", "text_encoder", "vae"}
     vae = next(m for m in status.missing if m.role == "vae")
-    assert vae.alternatives == ["black-forest-labs/FLUX.1-schnell/ae.safetensors"]
+    assert vae.source == "unsloth/Z-Image-Turbo/vae/diffusion_pytorch_model.safetensors"
+    assert vae.alternatives == [
+        "Comfy-Org/z_image_turbo/split_files/vae/ae.safetensors",
+        "black-forest-labs/FLUX.1-schnell/ae.safetensors",
+    ]
 
 
 def test_resolve_finds_cached_files_with_revision(
@@ -42,6 +63,49 @@ def test_resolve_finds_cached_files_with_revision(
     vae = resolved.files["vae"]  # nested file name in the repository
     assert vae.revision == REV
     assert vae.path.parts[-3:] == ("split_files", "vae", "ae.safetensors")
+
+
+def test_other_quantization_and_sharded_text_encoder(
+    hf_cache: Path, registry: Registry, add_cached_file: CacheWriter
+) -> None:
+    _cache_unsloth_diffusers(add_cached_file)
+    resolved = ModelResolver(hf_cache).resolve(registry.models["z-image-turbo"])
+    assert resolved.files["diffusion_model"].filename == "z-image-turbo-Q5_K_M.gguf"
+    te = resolved.files["text_encoder"]
+    assert te.path.name == "model.safetensors.index.json"
+    assert te.size == len(_index(*SHARDS)) + 2 * 5  # index + both shards
+
+
+def test_sharded_file_with_missing_shard_is_missing(
+    hf_cache: Path, registry: Registry, add_cached_file: CacheWriter
+) -> None:
+    _cache_unsloth_diffusers(add_cached_file, missing_shard=True)
+    status = ModelResolver(hf_cache).status(registry.models["z-image-turbo"])
+    assert [m.role for m in status.missing] == ["text_encoder"]
+
+
+def test_pull_downloads_all_shards(
+    hf_cache: Path,
+    registry: Registry,
+    add_cached_file: CacheWriter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    add_cached_file("unsloth/Z-Image-Turbo-GGUF", "z-image-turbo-Q4_K_M.gguf")
+    add_cached_file("unsloth/Z-Image-Turbo", "vae/diffusion_pytorch_model.safetensors")
+    downloads: list[str] = []
+
+    def fake_download(repo: str, filename: str, **kwargs: object) -> str:
+        downloads.append(filename)
+        content = _index(*SHARDS) if filename.endswith("index.json") else b"x"
+        return str(add_cached_file(repo, filename, content))
+
+    monkeypatch.setattr("local_image_mcp.resolver.hf_hub_download", fake_download)
+    resolved = ModelResolver(hf_cache).pull(registry.models["z-image-turbo"])
+    assert downloads == [
+        "text_encoder/model.safetensors.index.json",
+        *(f"text_encoder/{s}" for s in SHARDS),
+    ]
+    assert resolved.files["text_encoder"].size > 0
 
 
 def test_alternative_source_is_used(
@@ -94,6 +158,7 @@ def test_pull_skips_cached_files(
 ) -> None:
     add_cached_file("unsloth/Z-Image-Turbo-GGUF", "z-image-turbo-Q4_K_M.gguf")
     add_cached_file("unsloth/Qwen3-4B-Instruct-2507-GGUF", "Qwen3-4B-Instruct-2507-Q4_K_M.gguf")
+    add_cached_file("Comfy-Org/z_image_turbo", "split_files/vae/ae.safetensors")
     downloads: list[tuple[str, str]] = []
 
     def fake_download(repo: str, filename: str, **kwargs: object) -> str:
@@ -102,5 +167,5 @@ def test_pull_skips_cached_files(
 
     monkeypatch.setattr("local_image_mcp.resolver.hf_hub_download", fake_download)
     resolved = ModelResolver(hf_cache).pull(registry.models["z-image-turbo"])
-    assert downloads == [("Comfy-Org/z_image_turbo", "split_files/vae/ae.safetensors")]
+    assert downloads == []  # every role has a cached candidate (alternatives count)
     assert set(resolved.files) == {"diffusion_model", "text_encoder", "vae"}

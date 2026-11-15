@@ -97,6 +97,7 @@ Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
 |---|---|---|
 | `offload_to_cpu` | `false` (built-in models: `true`) | `--offload-to-cpu`: keep weights in RAM, load them into VRAM when needed. |
 | `vae_tiling` | `false` | `--vae-tiling`: decode in tiles to save VRAM. |
+| `text_encoder_on_cpu` | `false` (built-in models: `true`) | `--backend te=cpu`: run the text encoder on the CPU. Needed for the ~8 GB diffusers text encoders on an 8 GB GPU. |
 | `flash_attn` | not set | `--flash-attn on\|off\|auto` (sd-cli default: `auto`). |
 | `timeout_s` | `1800` | Stop the job after this many seconds. |
 | `extra_args` | `[]` | Extra `sd-cli` arguments, passed as they are. |
@@ -108,5 +109,13 @@ Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
   size (for example 768×768).
 - **Black or white images**: see `docs/troubleshooting.md` in the stable-diffusion.cpp
   repository.
-- **The job fails**: the error message contains the `[E]` lines of `sd-cli`. Run the
-  same `argv` from the sidecar JSON by hand to see the full output.
+- **The job fails**: the error message contains the `[E]` lines of `sd-cli`. The full
+  raw output of each run is in `<state dir>/logs/<image name>.sd-cli.log`
+  (`local-image doctor` shows the state dir). The sidecar JSON has the same path in
+  `backend.log_file`, and the exact `argv`.
+
+## Tested setup
+
+| Date | OS / GPU | sd-cli | Model files | Result |
+|---|---|---|---|---|
+| 2026-11-15 | Windows 11, RTX 5060 8 GB, CUDA 12 release build | commit `5dcfa79` | Z-Image-Turbo Q5_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/Z-Image-Turbo` | 1024×1024, 8 steps: 35.7 s cold, 22.4 s warm; peak VRAM about 5.3 GB; same seed gives a byte-identical PNG |

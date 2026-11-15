@@ -268,6 +268,7 @@ class ImageService:
                 argv=output.argv,
                 options=output.options,
                 native_record=output.native_record,
+                log_file=output.log_file,
             ),
             warnings=prepared.warnings,
         )

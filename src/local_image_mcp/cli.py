@@ -193,15 +193,14 @@ async def _generate(
     as_json: bool,
 ) -> int:
     queue = JobQueue(service, JobStore(settings.jobs_dir), GpuLock(settings.gpu_lock_path))
+    reporter = _ProgressPrinter(sys.stderr)
+    queue.add_listener(lambda _job, event: reporter.show(event))
     async with queue:
         job = queue.submit(request, overrides)
         for warning in job.warnings:
             print(f"warning: {warning}", file=sys.stderr)
-        reporter = _ProgressPrinter(sys.stderr)
         try:
-            while not job.state.is_terminal:
-                job = await queue.wait(job.id, timeout=0.2)
-                reporter.show(job)
+            job = await queue.wait(job.id)
         except asyncio.CancelledError:
             await queue.cancel(job.id)
             raise
@@ -229,9 +228,8 @@ class _ProgressPrinter:
         self.last: ProgressEvent | None = None
         self.tty = stream.isatty()
 
-    def show(self, job: Job) -> None:
-        event = job.progress
-        if event is None or event == self.last:
+    def show(self, event: ProgressEvent) -> None:
+        if event == self.last:
             return
         self.last = event
         if event.stage is ProgressStage.SAMPLING and event.step and event.total_steps:
