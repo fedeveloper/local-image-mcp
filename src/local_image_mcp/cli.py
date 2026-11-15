@@ -12,7 +12,7 @@ from typing import Any, TextIO
 
 from huggingface_hub import constants as hf_constants
 
-from local_image_mcp import __version__
+from local_image_mcp import __version__, claude_code
 from local_image_mcp.backends.sdcpp import find_binary
 from local_image_mcp.config import Settings
 from local_image_mcp.errors import LocalImageError
@@ -65,6 +65,19 @@ def build_parser() -> argparse.ArgumentParser:
     regen.add_argument("--json", action="store_true", help="print the result as JSON")
 
     sub.add_parser("doctor", help="show configuration and backend status")
+
+    claude = sub.add_parser("claude", help="Claude Code integration files")
+    claude_sub = claude.add_subparsers(dest="claude_command", required=True)
+    p = claude_sub.add_parser("install-skill", help="install the local-image skill")
+    p.add_argument(
+        "--scope",
+        choices=["user", "project"],
+        default="user",
+        help="user: ~/.claude/skills (default); project: <project>/.claude/skills",
+    )
+    p.add_argument("--force", action="store_true", help="replace a changed skill file")
+    claude_sub.add_parser("show-skill", help="print the SKILL.md")
+    claude_sub.add_parser("claude-md", help="print a section to paste into CLAUDE.md")
     return parser
 
 
@@ -72,6 +85,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         settings = Settings.from_env()
+        if args.command == "claude":
+            return _claude(args, settings)
         service = ImageService(settings)
         return _dispatch(args, settings, service)
     except LocalImageError as exc:
@@ -112,6 +127,27 @@ def _dispatch(args: argparse.Namespace, settings: Settings, service: ImageServic
             _generate(settings, service, request, meta.file_overrides(), as_json=args.json)
         )
     return _doctor(settings, service)
+
+
+# ---------------------------------------------------------------- claude
+
+
+def _claude(args: argparse.Namespace, settings: Settings) -> int:
+    sub: str = args.claude_command
+    if sub == "show-skill":
+        print(claude_code.skill_text(), end="")
+        return EXIT_OK
+    if sub == "claude-md":
+        print(claude_code.claude_md_section(), end="")
+        return EXIT_OK
+    scope = claude_code.SkillScope(args.scope)
+    target = claude_code.skill_path(scope, settings.project_dir)
+    if claude_code.install_skill(target, force=args.force):
+        print(f"Installed the skill: {target}")
+        print("Start a new Claude Code session to load it.")
+    else:
+        print(f"The skill is up to date: {target}")
+    return EXIT_OK
 
 
 # ---------------------------------------------------------------- models
