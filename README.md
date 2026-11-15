@@ -1,8 +1,8 @@
 # local-image-mcp
 
-> **Status: early development (Phase 1 of 7).** The core, the model registry, the
-> `fake` backend and the CLI work. The stable-diffusion.cpp backend (Phase 2) and the
-> MCP server (Phase 3) are not ready yet. See [PLAN.md](PLAN.md).
+> **Status: early development (Phase 2 of 7).** The core, the model registry, the CLI
+> and the stable-diffusion.cpp backend work. The MCP server (Phase 3) is not ready yet.
+> See [PLAN.md](PLAN.md).
 
 `local-image-mcp` connects Claude Code (and other MCP clients) to image generation models
 that run on your own GPU. Claude does the reasoning. When a project needs an image, it
@@ -31,6 +31,17 @@ Checks (the same as CI):
 
 ```sh
 uv run ruff check . && uv run ruff format --check . && uv run pyright && uv run pytest
+```
+
+## Generate with a real model
+
+Install `sd-cli` (stable-diffusion.cpp) as described in
+[docs/backends/sdcpp.md](docs/backends/sdcpp.md), then:
+
+```sh
+uv run local-image doctor
+uv run local-image models check z-image-turbo
+uv run local-image generate --model z-image-turbo --seed 42 --prompt "A red fox in fresh snow at sunrise, soft warm light, photorealistic"
 ```
 
 ## Models

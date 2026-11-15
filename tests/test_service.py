@@ -78,7 +78,7 @@ def test_negative_prompt_ignored_with_warning(service: ImageService) -> None:
 
 
 def test_sdcpp_models_report_backend_not_available(service: ImageService) -> None:
-    with pytest.raises(BackendNotAvailableError, match="Phase 2"):
+    with pytest.raises(BackendNotAvailableError, match="not found"):
         service.prepare(_req(model="z-image-turbo"))
 
 

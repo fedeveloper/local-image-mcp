@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (see §13). Next: Phase 2.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 code done (§14); waiting for the manual test on Windows.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -552,6 +552,19 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
   never overwritten.
 - Reference images in the sidecar carry a SHA-256, so a replay can detect a changed input.
 - The CLI has no extra dependency (argparse). The fake PNG uses only the standard library.
+
+## 14. Phase 2 notes
+
+- `backends/sdcpp.py` runs `sd-cli` once per image. The prompt goes through
+  `--prompt-file` (UTF-8). Output goes to a temporary name without `%`, then is renamed.
+- `backends/sdcpp_output.py` parses the console output (format from `src/core/util.cpp`
+  and `examples/common/log.cpp` at commit 532d2c1). `#` bars are model loading; `=` bars
+  during sampling are steps. `[E]` lines become the error message.
+- Cancel and timeout terminate the process (kill after 5 s).
+- The PNG generation record (`sdcpp.generation/v1`) is copied into the sidecar.
+- Tests use `tests/fake_sd_cli.py`, a stand-in that prints the same format. The real
+  `sd-cli` (CPU build, commit 532d2c1) was also run against invalid model files to check
+  the error path. No real image was generated in CI: that is the manual test on Windows.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 

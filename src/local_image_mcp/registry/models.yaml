@@ -1,5 +1,8 @@
 # Built-in model registry for local-image-mcp.
 #
+# sdcpp entries were checked against stable-diffusion.cpp commit 532d2c1
+# (docs/models/z_image.md and docs/models/flux2.md).
+#
 # Every repository and file name below was checked against the Hugging Face file
 # listings on 2026-11-15. Override or extend this file with a user registry
 # (see LOCAL_IMAGE_REGISTRY). Licenses apply to the model weights, not to this code.
