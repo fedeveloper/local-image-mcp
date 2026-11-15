@@ -59,7 +59,7 @@ Then ask Claude for an image. Claude calls `list_models`, `generate_image`,
 | Model | Capabilities | VRAM (estimate) | License of the weights |
 |---|---|---|---|
 | `z-image-turbo` (Z-Image-Turbo GGUF) | text2img | ~5.5 GB (measured) | Apache-2.0 |
-| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~4.5 GB (measured) | Apache-2.0 |
+| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~3.6 GB, ~4.6 GB with a reference (measured) | Apache-2.0 |
 
 Each model accepts several quantizations (Q4_K_M, Q5_K_M, Q6_K, ...) and text encoders in
 GGUF or diffusers format: the first file found in your cache is used.

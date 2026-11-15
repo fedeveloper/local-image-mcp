@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 code done (§16); next: the reference test on Windows.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Next: Phase 5.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -609,6 +609,9 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Phase 3 test in Claude Code on Windows, 2026-11-15: a new session generated a skier image
   through the server (Z-Image Q5_K_M, 1216×832, 8 steps, 23.6 s; the sd-cli log shows the
   RTX 5060 with CUDA). The output went to the session's project directory, as designed.
+- Phase 4 test on Windows, 2026-11-15: klein text2img 1024², 4 steps, 21.9 s, ~3.6 GB VRAM.
+  Reference edit (skier 1216×832, "make the jacket bright blue"): output 1232×848, 25.9 s,
+  ~4.6 GB VRAM, progress 4/4; pose and background kept. Registry VRAM estimate → 5.0 GB.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
