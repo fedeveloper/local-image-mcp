@@ -1,6 +1,6 @@
 # local-image-mcp
 
-> **Status: early development (Phase 4 of 7).** The core, the model registry, the CLI,
+> **Status: early development (Phase 5 of 7).** The core, the model registry, the CLI,
 > the stable-diffusion.cpp backend, the MCP server and reference images (FLUX.2 klein) work. See [PLAN.md](PLAN.md).
 
 `local-image-mcp` connects Claude Code (and other MCP clients) to image generation models
@@ -51,8 +51,15 @@ Register the MCP server as described in [docs/claude-code.md](docs/claude-code.m
 claude mcp add --transport stdio --scope user local-image -- uv run --directory /path/to/local-image-mcp local-image-mcp
 ```
 
+Install the skill, so that Claude knows the workflow and how to write prompts:
+
+```sh
+uv run local-image claude install-skill
+```
+
 Then ask Claude for an image. Claude calls `list_models`, `generate_image`,
 `get_job_status` and `get_job_result`, and gets the path of the PNG.
+`local-image claude claude-md` prints a section for your project's `CLAUDE.md`.
 
 ## Models
 

@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Next: Phase 5.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17); next: the skill test in Claude Code.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -612,6 +612,17 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Phase 4 test on Windows, 2026-11-15: klein text2img 1024², 4 steps, 21.9 s, ~3.6 GB VRAM.
   Reference edit (skier 1216×832, "make the jacket bright blue"): output 1232×848, 25.9 s,
   ~4.6 GB VRAM, progress 4/4; pose and background kept. Registry VRAM estimate → 5.0 GB.
+
+## 17. Phase 5 notes
+
+- The skill and the CLAUDE.md section ship inside the package
+  (`local_image_mcp/claude_code/`), so `uvx` users get them too.
+- `local-image claude install-skill [--scope user|project] [--force]` writes
+  `~/.claude/skills/local-image/SKILL.md` or `<project>/.claude/skills/local-image/SKILL.md`.
+  It never replaces a changed file without `--force`.
+- `local-image claude show-skill` and `local-image claude claude-md` print the files.
+- The skill names only real tools, models and sizes; tests check this against the
+  registry, so the skill and the code cannot drift apart silently.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 

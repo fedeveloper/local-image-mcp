@@ -54,6 +54,32 @@ After the release, the command becomes `... local-image -- uvx local-image-mcp`.
 NOTE: Set `HF_HOME` or `HF_HUB_CACHE` with `-e` if your Hugging Face cache is not in the
 default location and these variables are not set for your user.
 
+## Install the skill
+
+The `local-image` skill teaches Claude the workflow, the model choice, how to write
+prompts and edit instructions, and the common sizes.
+
+1. Install it for your user (all projects):
+   `uv run --directory <repo> local-image claude install-skill`
+   This writes `~/.claude/skills/local-image/SKILL.md`.
+2. Or install it for one project only (run it in the project directory):
+   `local-image claude install-skill --scope project`
+   This writes `<project>/.claude/skills/local-image/SKILL.md`. Commit it to share it.
+3. Start a new Claude Code session. Ask for an image; Claude loads the skill by itself.
+
+NOTE: The command does not replace a skill file that you changed. Use `--force` to
+replace it. `local-image claude show-skill` prints the file.
+
+## Add a section to CLAUDE.md
+
+A short section in the project's `CLAUDE.md` tells Claude where to save images and which
+style to use.
+
+1. Print the template: `local-image claude claude-md`.
+2. Paste it into the `CLAUDE.md` of your project.
+3. Replace the parts in `<...>` with the asset directory, the default sizes and the style
+   of your project.
+
 ## Environment variables
 
 | Variable | Meaning |
