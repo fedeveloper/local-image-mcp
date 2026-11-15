@@ -25,17 +25,25 @@ Before the first PyPI release, run the server from a clone of this repository.
 Windows (PowerShell):
 
 ```powershell
-claude mcp add --transport stdio --scope user `
+claude.exe mcp add --transport stdio --scope user local-image `
   -e LOCAL_IMAGE_SD_BINARY=C:\tools\sdcpp\sd-cli.exe `
-  local-image -- uv run --directory C:\path\to\local-image-mcp local-image-mcp
+  -- uv run --directory C:\path\to\local-image-mcp local-image-mcp
 ```
+
+NOTE: Put the server name (`local-image`) before `-e`. The `-e` option accepts several
+values, so a name after it is read as an environment variable
+("Invalid environment variable format").
+
+NOTE: In Windows PowerShell 5.1, call `claude.exe`, not `claude`. The npm wrapper
+`claude.ps1` drops the `--`, and Claude Code then reports "unknown option '--directory'".
+In `cmd` or Git Bash, `claude` works.
 
 Linux:
 
 ```sh
-claude mcp add --transport stdio --scope user \
+claude mcp add --transport stdio --scope user local-image \
   -e LOCAL_IMAGE_SD_BINARY=$HOME/sdcpp/build/bin/sd-cli \
-  local-image -- uv run --directory /path/to/local-image-mcp local-image-mcp
+  -- uv run --directory /path/to/local-image-mcp local-image-mcp
 ```
 
 After the release, the command becomes `... local-image -- uvx local-image-mcp`.
