@@ -1,0 +1,68 @@
+[project]
+name = "local-image-mcp"
+version = "0.1.0.dev0"
+description = "MCP server and CLI that generate images with local GGUF diffusion models."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "local-image-mcp contributors" }]
+keywords = ["mcp", "claude-code", "stable-diffusion", "gguf", "image-generation"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+]
+dependencies = [
+    "filelock>=3.16",
+    "huggingface-hub>=1.0",
+    "platformdirs>=4.3",
+    "pydantic>=2.12",
+    "pyyaml>=6.0.2",
+]
+
+[project.scripts]
+local-image = "local_image_mcp.cli:main"
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.400",
+    "pytest>=8.4",
+    "ruff>=0.14",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/local_image_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "PTH", "ASYNC", "S"]
+ignore = [
+    "S101",     # assert is fine
+    "ASYNC109", # explicit timeout parameters are part of the public API
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportPrivateUsage = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

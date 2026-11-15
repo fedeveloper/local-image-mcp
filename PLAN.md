@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Phase 0 (plan and questions). Waiting for approval.** No code is written yet.
+Status: **Plan approved on 2026-11-15. Phase 1 done (see §13). Next: Phase 2.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -237,7 +237,7 @@ models:
   flux2-klein-4b:
     display_name: FLUX.2 klein 4B (Q4_K_M)
     backend: sdcpp
-    capabilities: [text2img, reference]
+    capabilities: [text2img, reference, edit]
     license: apache-2.0
     license_url: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
     vram_estimate_gb: 6.0          # to verify in Phase 4
@@ -279,23 +279,26 @@ class Capability(StrEnum):
     REFERENCE = "reference"
     EDIT = "edit"
 
+
 @dataclass(frozen=True)
 class GenerationRequest:
     prompt: str
     model_id: str
-    width: int | None = None          # None -> registry default
+    width: int | None = None  # None -> registry default
     height: int | None = None
-    seed: int | None = None           # None -> random, then recorded
+    seed: int | None = None  # None -> random, then recorded
     steps: int | None = None
     cfg_scale: float | None = None
     negative_prompt: str | None = None
     reference_images: tuple[Path, ...] = ()
-    output_path: Path | None = None   # file or directory; None -> default output dir
+    output_path: Path | None = None  # file or directory; None -> default output dir
+
 
 @dataclass(frozen=True)
-class ResolvedModel:                  # registry entry + absolute local file paths
+class ResolvedModel:  # registry entry + absolute local file paths
     spec: ModelSpec
-    files: dict[str, ResolvedFile]    # role -> path, repo, filename, revision, size
+    files: dict[str, ResolvedFile]  # role -> path, repo, filename, revision, size
+
 
 @dataclass(frozen=True)
 class GenerationResult:
@@ -305,7 +308,7 @@ class GenerationResult:
     duration_s: float
     backend_name: str
     backend_version: str
-    backend_record: dict | None       # e.g. sdcpp.generation/v1 JSON
+    backend_record: dict | None  # e.g. sdcpp.generation/v1 JSON
 ```
 
 ```python
@@ -316,13 +319,15 @@ class ProgressEvent(NamedTuple):
     total_steps: int | None
     message: str | None
 
+
 class Backend(Protocol):
     name: str
+
     def version(self) -> str: ...
-    def check(self) -> BackendHealth: ...               # binary found? version? GPU?
+    def check(self) -> BackendHealth: ...  # binary found? version? GPU?
     async def generate(
         self,
-        request: GenerationRequest,        # already validated and filled with defaults
+        request: GenerationRequest,  # already validated and filled with defaults
         model: ResolvedModel,
         output_file: Path,
         on_progress: Callable[[ProgressEvent], None],
@@ -349,7 +354,7 @@ downloads by default, so a tool call never starts a multi-GB transfer.
 class JobQueue:
     async def submit(self, request: GenerationRequest) -> Job: ...  # validates first
     def get(self, job_id: str) -> Job: ...
-    async def wait(self, job_id: str, timeout_s: float) -> Job: ... # long-poll helper
+    async def wait(self, job_id: str, timeout_s: float) -> Job: ...  # long-poll helper
     async def cancel(self, job_id: str) -> Job: ...
 ```
 
@@ -372,7 +377,7 @@ Transport: stdio. SDK: `mcp>=2.3,<3` with `MCPServer`.
 | `list_models` | — | id, name, capabilities, license, VRAM estimate, defaults, `available` + missing files | < 1 s |
 | `generate_image` | `prompt`, `model`, `width?`, `height?`, `seed?`, `steps?`, `output_path?`, `reference_images?` | `job_id`, queue position, resolved settings | < 1 s |
 | `get_job_status` | `job_id`, `wait_seconds?` (0–45) | state, stage, step/total, percent, error, elapsed | ≤ 45 s |
-| `get_job_result` | `job_id`, `include_preview?` | image path, metadata path, seed, metadata summary; optional small JPEG preview as image content | < 2 s |
+| `get_job_result` | `job_id`, `include_preview?` (default false) | image path, metadata path, seed, metadata summary; optional small JPEG preview as image content | < 2 s |
 | `cancel_job` | `job_id` | final state | < 5 s |
 
 Rules:
@@ -470,6 +475,7 @@ Each phase ends with green `ruff`, `pyright` and `pytest`, and one commit (or on
 | 4 | FLUX.2 klein 4B: reference images (`-r`), capability checks, limits for the number of references. | Text-to-image and one reference test on Windows. |
 | 5 | Claude Code integration: `CLAUDE.md` section template, `SKILL.md`, `docs/claude-code.md`. | Skill loads and gives correct prompts in a test project. |
 | 6 | README (Windows + Linux install, model table, licenses, responsible use), examples, CONTRIBUTING, CHANGELOG, release prep (version, PyPI metadata, tag). | Release candidate ready. |
+| 7 | `sd-server` backend: start on first job, keep models loaded while the queue has jobs, stop when the queue is empty. | Several images in a row without a model reload. |
 
 ### What I need on the Windows machine
 
@@ -512,36 +518,40 @@ descriptive and easy to find. Use the CLI name `local-image`.
 
 ---
 
-## 12. Open questions
+## 12. Decisions (answers from Federico, 2026-11-15)
 
-1. **Executable:** your binary is `sd-cli.exe` (current name) or `sd.exe` (older build)?
-   Which version, and CUDA or Vulkan build?
-2. **Cached files:** which quantizations do you have in the HF cache
-   (for example Q4_K_M, Q5_K_M, Q8_0)? Do you have the text encoders and the VAEs, and from
-   which repositories? I want the registry defaults to match your cache.
-3. **Guidance semantics:** in sd.cpp, `--cfg-scale 1.0` means "no CFG". It matches
-   diffusers `guidance_scale=0`. I propose that the public parameter is `cfg_scale` with
-   the sd.cpp meaning. Do you agree, or do you prefer a `guidance` value with the diffusers
-   meaning and a conversion in each backend?
-4. **`sd-server` backend:** `sd-server` keeps the models in memory and has its own async
-   job API. Do you want it as an extra backend after Phase 4? It removes the model load time
-   on each image.
-5. **`edit` capability:** in sd.cpp, editing with FLUX.2 klein uses the same reference
-   image mechanism (`-r`). Do I mark FLUX.2 klein 4B as `[text2img, reference, edit]`,
-   or keep `edit` for a future mask/inpaint feature?
-6. **Default output directory:** `<project>/generated-images/` or `<project>/assets/generated/`?
-   Do you want a configurable list of allowed roots?
-7. **Preview in `get_job_result`:** do you want a small image preview by default, so that
-   Claude can see the result? It costs tokens.
-8. **Downloads:** do you agree that only `local-image models pull` downloads, and that the
-   MCP server never downloads?
-9. **Negative prompt:** for models without negative prompt support (Z-Image-Turbo with
-   CFG off), do I reject a negative prompt with an error, or ignore it with a warning?
-10. **CI on Windows:** do you want the CI matrix on `ubuntu-latest` and `windows-latest`?
-    It doubles the CI time but catches path and process problems early.
-11. **Name:** keep `local-image-mcp`, or use one of the names in §11?
+| # | Topic | Decision |
+|---|---|---|
+| 1 | Executable | `sd-cli.exe`, CUDA build. |
+| 2 | Cached files | Q4_K_M quantizations. Text encoders and VAEs are in the HF cache. Phase 2 confirms the exact repositories with `local-image models check`. |
+| 3 | Guidance | Public parameter `cfg_scale` with the sd.cpp meaning (`1.0` = no CFG). |
+| 4 | `sd-server` backend | Yes, after Phase 4 (new Phase 7). The backend starts `sd-server` when a job arrives, keeps the models loaded while jobs are in the queue, and stops it (frees VRAM) when the queue is empty. |
+| 5 | `edit` capability | FLUX.2 klein 4B: `[text2img, reference, edit]`. |
+| 6 | Output directory | `<project>/generated-images/`. |
+| 7 | Preview | No default. `get_job_result` takes `include_preview` (default `false`); Claude sets it when the user asks to see the result. |
+| 8 | Downloads | Only `local-image models pull` downloads. The MCP server never downloads. |
+| 9 | Negative prompt | For a model without negative prompt support: ignore it and return a warning. |
+| 10 | CI | Matrix on `ubuntu-latest` and `windows-latest`. |
+| 11 | Name | Keep `local-image-mcp`. |
 
----
+Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
+
+## 13. Phase 1 notes (implementation choices)
+
+- `service.ImageService` holds validation, defaults, file resolution and one run.
+  The CLI and (in Phase 3) the MCP server use it through `jobs.JobQueue`.
+- The built-in registry also has a `fake` model (backend `fake`, no files) for tests,
+  CI and a quick smoke test without a GPU.
+- `sdcpp`, `diffusers` and `comfyui` are placeholder backends that report
+  "not available". `prepare()` checks the backend before it checks the model files.
+- Job records are JSON files in `<state_dir>/jobs/`. Each live process holds
+  `<state_dir>/jobs/owners/<pid>.lock`. At start, a queue marks only the unfinished
+  jobs of dead processes as failed, so two Claude Code sessions do not break each other.
+- Output files: `.png` only. The final name is chosen just before the run, so two
+  queued jobs never write the same file. An image or a sidecar with the same name is
+  never overwritten.
+- Reference images in the sidecar carry a SHA-256, so a replay can detect a changed input.
+- The CLI has no extra dependency (argparse). The fake PNG uses only the standard library.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
