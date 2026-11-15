@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Next: Phase 3.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done (§15). Next: Phase 3 manual test in Claude Code, then Phase 4.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -573,6 +573,25 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
   diffusers text encoder / VAE as candidates; `text_encoder_on_cpu` option; the stage parser
   no longer matches `generate_image completed`; stdout and stderr have separate buffers;
   the CLI prints every progress event; the raw sd-cli output is saved in `<state>/logs/`.
+
+## 15. Phase 3 notes
+
+- `server.py` uses `mcp.server.mcpserver.MCPServer` (SDK `mcp` 2.3.0, pinned `>=2.3,<3`).
+  Entry point: `local-image-mcp` (stdio). Logs go to stderr only.
+- The lifespan starts and stops the `JobQueue`. Jobs of an earlier server process are read
+  from the job store, so `get_job_result` works after a restart.
+- `generate_image` also takes `cfg_scale` and `negative_prompt` (§12 decisions 3 and 9).
+  It returns the resolved settings (seed, size, steps, output path) and the warnings.
+- `get_job_status` waits in slices of 2 s and sends a progress notification after each
+  slice. `wait_seconds` above 45 is rejected by the input schema.
+- `get_job_result` returns `CallToolResult` with structured content; `include_preview=true`
+  adds a 384 px JPEG (Pillow).
+- The `fake` model is hidden from the server unless `LOCAL_IMAGE_ENABLE_FAKE=1`.
+- Every outcome returns a `next_step` hint, so Claude does not need extra instructions.
+- `Settings.from_env` reads `HF_HUB_CACHE` / `HF_HOME` itself, because `huggingface_hub`
+  reads them only at import time (bug found on Windows, PR #5).
+- Tests: `tests/test_server.py` uses the SDK in-process `Client` with the fake backend.
+  A manual stdio test (real subprocess) passed in the cloud container.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
