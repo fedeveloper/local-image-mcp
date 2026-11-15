@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18); next: the skill test in Claude Code, the tag, then Phase 7.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18). Skill installed and listed in Claude Code on Windows. Phase 7 (sd-server mode) code done (§19); next: the Windows test. The PyPI tag waits for Federico.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -635,6 +635,31 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - `.github/workflows/release.yml`: on a `v*` tag, check the tag against the version, test,
   build, and publish with PyPI trusted publishing (environment `pypi`). It needs the
   one-time PyPI setup in `docs/releasing.md`. No tag is pushed without Federico's OK.
+
+## 19. Phase 7 notes (sd-server backend)
+
+- `sd-server` (commit `532d2c1`, `examples/server`) takes the same model options as
+  `sd-cli`, loads the model before it listens, and has a native async API:
+  `POST /sdcpp/v1/img_gen` (202 + job id, partial JSON merged onto the defaults),
+  `GET /sdcpp/v1/jobs/{id}`, `POST /sdcpp/v1/jobs/{id}/cancel`,
+  `GET /sdcpp/v1/models/status` (`empty | loading | ready | error`). No shutdown
+  endpoint: the client terminates the process. `models/load` refuses absolute paths, so
+  a model change restarts the process. Checked on a CPU build: a bad model file makes
+  the process exit with code 1; without a model, the status is `empty`.
+- `backends/sdserver.py`: process lifecycle and HTTP (standard library `urllib`, no
+  proxy, loopback only). `SdCppBackend(mode="server")` uses it.
+- Lifecycle: start at the first job; reuse while the model and the options are the same;
+  restart on a change; `JobQueue` calls `ImageService.on_queue_empty()` when no job is
+  queued, and the backend stops `sd-server` after `LOCAL_IMAGE_SD_SERVER_IDLE` seconds
+  (default 120). This grace period refines decision §12 ("unload when the queue is
+  empty"): Claude submits one job after the other, so the queue is empty for a moment
+  between two jobs. `JobQueue.stop()` calls `ImageService.aclose()`.
+- Cancel and timeout send `/cancel`; after 30 s without an end, the process is killed.
+- Known limit: during the grace period, the GPU lock is free but `sd-server` still holds
+  VRAM. Documented; `LOCAL_IMAGE_SD_SERVER_IDLE=0` avoids it.
+- Default mode stays `cli` until the Windows test passes.
+- Tests: `tests/fake_sd_server.py` (stand-in for the native API) and
+  `tests/test_sdcpp_server.py`.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 

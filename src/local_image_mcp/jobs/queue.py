@@ -69,6 +69,10 @@ class JobQueue:
         for entry in self._entries.values():
             if not entry.job.state.is_terminal:
                 self._finish(entry, JobState.CANCELLED, "The server stopped.")
+        try:
+            await self.service.aclose()
+        except Exception:
+            log.exception("backend shutdown failed")
         self.store.release_ownership()
 
     async def __aenter__(self) -> JobQueue:
@@ -147,6 +151,11 @@ class JobQueue:
             if entry is None or entry.job.state is not JobState.QUEUED:
                 continue
             await self._run_one(entry)
+            if not any(e.job.state is JobState.QUEUED for e in self._entries.values()):
+                try:
+                    await self.service.on_queue_empty()
+                except Exception:
+                    log.exception("on_queue_empty failed")
 
     async def _run_one(self, entry: _Entry) -> None:
         job = entry.job
