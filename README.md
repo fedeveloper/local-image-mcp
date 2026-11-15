@@ -1,7 +1,7 @@
 # local-image-mcp
 
-> **Status: early development (Phase 3 of 7).** The core, the model registry, the CLI,
-> the stable-diffusion.cpp backend and the MCP server work. See [PLAN.md](PLAN.md).
+> **Status: early development (Phase 4 of 7).** The core, the model registry, the CLI,
+> the stable-diffusion.cpp backend, the MCP server and reference images (FLUX.2 klein) work. See [PLAN.md](PLAN.md).
 
 `local-image-mcp` connects Claude Code (and other MCP clients) to image generation models
 that run on your own GPU. Claude does the reasoning. When a project needs an image, it
@@ -59,7 +59,7 @@ Then ask Claude for an image. Claude calls `list_models`, `generate_image`,
 | Model | Capabilities | VRAM (estimate) | License of the weights |
 |---|---|---|---|
 | `z-image-turbo` (Z-Image-Turbo GGUF) | text2img | ~5.5 GB (measured) | Apache-2.0 |
-| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~4.5 GB (measured) | Apache-2.0 |
+| `flux2-klein-4b` (FLUX.2 klein 4B GGUF) | text2img, reference, edit | ~3.6 GB, ~4.6 GB with a reference (measured) | Apache-2.0 |
 
 Each model accepts several quantizations (Q4_K_M, Q5_K_M, Q6_K, ...) and text encoders in
 GGUF or diffusers format: the first file found in your cache is used.

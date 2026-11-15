@@ -91,6 +91,27 @@ For each image, the backend:
 
 Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
 
+## Reference images (FLUX.2 klein)
+
+`flux2-klein-4b` has the capabilities `reference` and `edit`. Give up to 4 images
+(`--ref` in the CLI, `reference_images` in the MCP tool). The backend passes each one
+with `-r`. sd-cli selects the `flux2` reference preset by itself (VAE-encoded references
+go to the DiT, reference index `increase`; see `docs/guides/edit.md` at commit
+`532d2c1`), so no extra option is necessary.
+
+- Formats: PNG, JPEG, WebP, BMP.
+- Relative paths start at the project directory.
+- Without `width` and `height`, the output keeps the aspect ratio of the first reference,
+  at about the default pixel count of the model, inside the model limits.
+- The sidecar JSON records the path and the SHA-256 of each reference.
+
+Example:
+
+```sh
+uv run local-image generate -m flux2-klein-4b --seed 42 --ref photo.jpg \
+  -p "Make the jacket bright blue. Keep the face, the pose and the background."
+```
+
 ## Backend options (registry `backend_options`)
 
 | Option | Default | Effect |
@@ -121,3 +142,4 @@ Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
 | 2026-11-15 | Windows 11, RTX 5060 8 GB, CUDA 12 release build | commit `5dcfa79` | Z-Image-Turbo Q5_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/Z-Image-Turbo` | 1024×1024, 8 steps: 35.7 s cold, 22.4 s warm; peak VRAM about 5.3 GB; same seed gives a byte-identical PNG |
 | 2026-11-15 | same | same | Z-Image-Turbo Q5_K_M with the built-in registry (no user override) | 1024×1024, 8 steps: 35.2 s; peak VRAM about 5.3 GB above the desktop baseline; progress reaches 8/8 |
 | 2026-11-15 | same | same | FLUX.2-klein-4B Q4_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/FLUX.2-klein-4B` | 1024×1024, 4 steps: 21.9 s; peak VRAM about 3.6 GB above the desktop baseline; progress reaches 4/4 |
+| 2026-11-15 | same | same | FLUX.2-klein-4B Q4_K_M, one reference image (1216×832) | edit "make the jacket blue": output 1232×848 from the reference shape, 4 steps: 25.9 s; peak VRAM about 4.6 GB above the desktop baseline; pose and background kept |

@@ -257,3 +257,23 @@ def test_main_reads_enable_fake(value: str, monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(SystemExit):
         server.main()
     assert captured["include_fake"] is True
+
+
+def test_generate_with_relative_reference(service: ImageService) -> None:
+    from PIL import Image
+
+    ref = service.settings.project_dir / "photo.jpg"
+    Image.new("RGB", (900, 1600), (10, 120, 200)).save(ref)
+
+    async def scenario(client: Client) -> tuple[dict[str, Any], dict[str, Any]]:
+        args = {"prompt": "make it red", "model": "fake", "reference_images": ["photo.jpg"]}
+        gen = _data(await client.call_tool("generate_image", args))
+        await client.call_tool("get_job_status", {"job_id": gen["job_id"], "wait_seconds": 10})
+        result = _data(await client.call_tool("get_job_result", {"job_id": gen["job_id"]}))
+        return gen, result
+
+    gen, result = _run(_app(service), scenario)
+    assert gen["settings"]["reference_images"] == [str(ref.resolve())]
+    assert gen["settings"]["height"] > gen["settings"]["width"]
+    sidecar = json.loads(Path(result["metadata_path"]).read_text(encoding="utf-8"))
+    assert sidecar["request"]["reference_images"][0]["sha256"]

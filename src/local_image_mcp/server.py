@@ -392,7 +392,13 @@ def create_server(app: LocalImageApp) -> MCPServer[None]:
     def generate_image(
         prompt: Annotated[str, Field(description="What the image shows, in natural language.")],
         model: Annotated[str, Field(description="A model id from list_models.")],
-        width: Annotated[int | None, Field(description="Pixels. Default: model default.")] = None,
+        width: Annotated[
+            int | None,
+            Field(
+                description="Pixels. Default: model default, or the shape of the first "
+                "reference image when reference_images is set and no size is given."
+            ),
+        ] = None,
         height: Annotated[int | None, Field(description="Pixels. Default: model default.")] = None,
         seed: Annotated[int | None, Field(description="Same seed = same image.")] = None,
         steps: Annotated[int | None, Field(description="Default: model default.")] = None,
@@ -405,7 +411,11 @@ def create_server(app: LocalImageApp) -> MCPServer[None]:
         ] = None,
         reference_images: Annotated[
             list[str] | None,
-            Field(description="Paths of input images, for models with 'reference' or 'edit'."),
+            Field(
+                description="Paths of input images (png, jpg, webp, bmp), for models with "
+                "'reference' or 'edit'. Relative paths start at the project directory. "
+                "Describe the change in the prompt."
+            ),
         ] = None,
         output_path: Annotated[
             str | None,

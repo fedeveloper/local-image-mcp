@@ -6,6 +6,7 @@ Both the CLI and the MCP server use this class (through ``JobQueue``).
 from __future__ import annotations
 
 import asyncio
+import math
 import secrets
 import time
 from collections.abc import Callable
@@ -13,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from PIL import Image
 from pydantic import BaseModel, ConfigDict
 
 from local_image_mcp.backends import Backend, ProgressCallback, create_backends
@@ -37,7 +39,7 @@ from local_image_mcp.paths import (
     sidecar_path,
     unique_output_path,
 )
-from local_image_mcp.registry import FileRef, ModelSpec, Registry, load_registry
+from local_image_mcp.registry import FileRef, ModelLimits, ModelSpec, Registry, load_registry
 from local_image_mcp.resolver import ModelAvailability, ModelResolver, ResolvedModel
 from local_image_mcp.types import (
     Capability,
@@ -149,6 +151,8 @@ class ImageService:
         d, lim = spec.defaults, spec.limits
         width = request.width if request.width is not None else d.width
         height = request.height if request.height is not None else d.height
+        if references and request.width is None and request.height is None:
+            width, height = size_like_reference(references[0], d.width * d.height, lim)
         for name, value in (("width", width), ("height", height)):
             if not lim.min_size <= value <= lim.max_size:
                 raise InvalidRequestError(
@@ -282,3 +286,39 @@ class ImageService:
             backend_version=output.backend_version,
             warnings=prepared.warnings,
         )
+
+
+def size_like_reference(image: Path, target_pixels: int, limits: ModelLimits) -> tuple[int, int]:
+    """Return an output size with the aspect ratio of ``image`` and about ``target_pixels``.
+
+    Used when a request has reference images but no size: the result keeps the shape of
+    the first reference. Each side is a multiple of ``limits.size_multiple`` and inside the
+    limits. If the image cannot be read, the result is a square.
+    """
+    try:
+        with Image.open(image) as img:
+            ref_w, ref_h = img.size
+    except OSError:
+        ref_w = ref_h = 1
+    if ref_w <= 0 or ref_h <= 0:
+        ref_w = ref_h = 1
+    if limits.max_pixels is not None:
+        target_pixels = min(target_pixels, limits.max_pixels)
+    aspect = ref_w / ref_h
+    m = limits.size_multiple
+
+    def snap(value: float) -> int:
+        lo = -(-limits.min_size // m) * m
+        hi = limits.max_size // m * m
+        return max(lo, min(hi, round(value / m) * m))
+
+    width = snap(math.sqrt(target_pixels * aspect))
+    height = snap(width / aspect)
+    while limits.max_pixels is not None and width * height > limits.max_pixels:
+        if width >= height and snap(width - m) < width:
+            width = snap(width - m)
+        elif snap(height - m) < height:
+            height = snap(height - m)
+        else:
+            break  # both sides at the minimum; the size check reports the problem
+    return width, height

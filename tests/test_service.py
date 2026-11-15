@@ -121,3 +121,51 @@ def settings_project_image(service: ImageService) -> Path:
     image = service.settings.project_dir / "ref.png"
     image.write_bytes(b"\x89PNG fake")
     return image
+
+
+def _png(path: Path, size: tuple[int, int]) -> Path:
+    from PIL import Image
+
+    Image.new("RGB", size, (200, 30, 30)).save(path)
+    return path
+
+
+def test_size_follows_reference_when_no_size_given(service: ImageService, tmp_path: Path) -> None:
+    ref = _png(tmp_path / "wide.png", (1600, 900))
+    s = service.prepare(_req(reference_images=[ref])).settings
+    assert s.width > s.height
+    assert s.width % 16 == 0 and s.height % 16 == 0
+    assert abs(s.width / s.height - 16 / 9) < 0.1
+    assert abs(s.width * s.height - 256 * 256) < 256 * 256 * 0.15
+
+
+def test_explicit_size_wins_over_reference(service: ImageService, tmp_path: Path) -> None:
+    ref = _png(tmp_path / "wide.png", (1600, 900))
+    s = service.prepare(_req(reference_images=[ref], width=256, height=512)).settings
+    assert (s.width, s.height) == (256, 512)
+
+
+@pytest.mark.parametrize(
+    ("ref_size", "expected"),
+    [((1024, 1024), (1024, 1024)), ((900, 1600), (768, 1360)), ((3000, 1000), (1776, 592))],
+)
+def test_size_like_reference_klein_limits(
+    tmp_path: Path, ref_size: tuple[int, int], expected: tuple[int, int]
+) -> None:
+    from local_image_mcp.registry import load_registry
+    from local_image_mcp.service import size_like_reference
+
+    spec = load_registry().models["flux2-klein-4b"]
+    ref = _png(tmp_path / "ref.png", ref_size)
+    w, h = size_like_reference(ref, 1024 * 1024, spec.limits)
+    assert (w, h) == expected
+    assert spec.limits.max_pixels is not None and w * h <= spec.limits.max_pixels
+
+
+def test_size_like_reference_unreadable_image_is_square(tmp_path: Path) -> None:
+    from local_image_mcp.registry import ModelLimits
+    from local_image_mcp.service import size_like_reference
+
+    bad = tmp_path / "bad.png"
+    bad.write_bytes(b"not an image")
+    assert size_like_reference(bad, 512 * 512, ModelLimits()) == (512, 512)
