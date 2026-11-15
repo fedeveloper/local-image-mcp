@@ -116,6 +116,7 @@ def test_z_image_turbo_argv_and_result(sd_service: ImageService, record: Path) -
     assert (_flag(argv, "--steps"), _flag(argv, "--cfg-scale")) == ("8", "1")
     assert _flag(argv, "--seed") == "7"
     assert "--offload-to-cpu" in argv
+    assert _flag(argv, "--backend") == "te=cpu"
     assert "-r" not in argv and "--negative-prompt-file" not in argv
     assert "%" not in _flag(argv, "-o")  # sd-cli treats %d in -o as a sequence pattern
 
@@ -135,6 +136,7 @@ def test_z_image_turbo_argv_and_result(sd_service: ImageService, record: Path) -
     assert _flag(meta.backend.argv, "--prompt-file") == "<prompt>"
     assert _flag(meta.backend.argv, "-o") == str(result.image_path)
     assert meta.model.files["diffusion_model"].repo == "unsloth/Z-Image-Turbo-GGUF"
+    assert meta.backend.log_file is None  # no log_dir in this fixture
 
 
 def test_flux_reference_images(sd_service: ImageService, record: Path) -> None:
@@ -153,6 +155,18 @@ def test_flux_reference_images(sd_service: ImageService, record: Path) -> None:
     assert _flag(argv, "--sampling-method") == "euler"
     assert _flag(argv, "--steps") == "4"
     assert _flag(argv, "--llm").endswith("Qwen3-4B-Q4_K_M.gguf")
+
+
+def test_raw_output_is_logged(
+    sd_service: ImageService, backend: SdCppBackend, tmp_path: Path
+) -> None:
+    backend.log_dir = tmp_path / "logs"
+    result, _ = _run(sd_service, GenerationRequest(prompt="x", model="z-image-turbo", seed=3))
+    log = (tmp_path / "logs" / f"{result.image_path.stem}.sd-cli.log").read_text("utf-8")
+    assert "generating image: 1/1 - seed 3" in log and "| 8/8 -" in log
+    assert read_sidecar(result.metadata_path).backend.log_file == tmp_path / "logs" / (
+        f"{result.image_path.stem}.sd-cli.log"
+    )
 
 
 def test_failure_reports_sd_cli_error(

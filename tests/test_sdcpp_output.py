@@ -20,6 +20,7 @@ SAMPLE = (
     "[I] decode_first_stage completed, taking 1.20s --- image.cpp:759\n"
     "[W] something odd --- x.cpp:1\n"
     "[I] save result image 0 to 'out.png' (success) --- main.cpp:501\n"
+    "[I] generate_image completed in 30.10s --- image.cpp:1227\n"
 )
 
 
@@ -47,6 +48,20 @@ def test_stages_and_steps() -> None:
 def test_chunk_boundaries_do_not_matter() -> None:
     one_char_chunks = list(SAMPLE)
     assert _events(one_char_chunks) == _events([SAMPLE])
+
+
+def test_stdout_and_stderr_chunks_do_not_mix() -> None:
+    parser = SdCliOutputParser(total_steps=8)
+    events = parser.feed(
+        "[I] generating image: 1/1 - seed 1 --- a.cpp:1\n\r  |===>   | 7/", "stdout"
+    )
+    events += parser.feed("ggml_cuda_init: found 1 CUDA device\n", "stderr")
+    events += parser.feed("8 - 1.00s/it\x1b[K\r  |=======| 8/8 - 1.00s/it\x1b[K\n", "stdout")
+    assert [(e.stage, e.step) for e in events] == [
+        (ProgressStage.SAMPLING, 0),
+        (ProgressStage.SAMPLING, 7),
+        (ProgressStage.SAMPLING, 8),
+    ]
 
 
 def test_errors_and_warnings_are_collected() -> None:

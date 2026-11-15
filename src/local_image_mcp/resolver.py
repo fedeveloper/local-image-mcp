@@ -7,8 +7,10 @@ The cache location follows ``HF_HUB_CACHE`` and ``HF_HOME`` (read by ``huggingfa
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from typing import cast
 
 from huggingface_hub import (
     hf_hub_download,  # pyright: ignore[reportUnknownVariableType]
@@ -72,13 +74,19 @@ class ModelResolver:
         path = Path(cached)
         if not path.is_file():
             return None
+        size = path.stat().st_size
+        if is_shard_index(ref.filename):
+            shards = shard_files(path)
+            if shards is None or not all((path.parent / s).is_file() for s in shards):
+                return None
+            size += sum((path.parent / s).stat().st_size for s in shards)
         return ResolvedFile(
             role=role,
             path=path,
             repo=ref.repo,
             filename=ref.filename,
             revision=_snapshot_revision(path, ref.filename),
-            size=path.stat().st_size,
+            size=size,
         )
 
     def status(
@@ -133,7 +141,16 @@ class ModelResolver:
                 )
             if on_file is not None:
                 on_file(role, ref.describe())
-            hf_hub_download(ref.repo, ref.filename, revision=ref.revision, cache_dir=self.cache_dir)
+            index = hf_hub_download(
+                ref.repo, ref.filename, revision=ref.revision, cache_dir=self.cache_dir
+            )
+            if is_shard_index(ref.filename):
+                folder = str(PurePosixPath(ref.filename).parent)
+                for shard in shard_files(Path(index)) or []:
+                    name = shard if folder == "." else f"{folder}/{shard}"
+                    if on_file is not None:
+                        on_file(role, f"{ref.repo}/{name}")
+                    hf_hub_download(ref.repo, name, revision=ref.revision, cache_dir=self.cache_dir)
         return self.resolve(spec)
 
     @staticmethod
@@ -142,6 +159,26 @@ class ModelResolver:
         if overrides:
             refs.update(overrides)
         return refs
+
+
+def is_shard_index(filename: str) -> bool:
+    """A ``*.safetensors.index.json`` file lists the shards of one sharded model."""
+    return filename.endswith(".safetensors.index.json")
+
+
+def shard_files(index_path: Path) -> list[str] | None:
+    """Return the shard file names listed in a safetensors index, or ``None`` if invalid."""
+    try:
+        data: object = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    weight_map = cast(dict[str, object], data).get("weight_map")
+    if not isinstance(weight_map, dict) or not weight_map:
+        return None
+    names = {str(v) for v in cast(dict[str, object], weight_map).values()}
+    return sorted(names)
 
 
 def _snapshot_revision(path: Path, filename: str) -> str | None:

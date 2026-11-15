@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from local_image_mcp.errors import JobCancelledError, JobNotFoundError, LocalImageError
@@ -39,6 +40,11 @@ class JobQueue:
         self._pending: asyncio.Queue[str] = asyncio.Queue()
         self._order: list[str] = []
         self._worker: asyncio.Task[None] | None = None
+        self._listeners: list[Callable[[Job, ProgressEvent], None]] = []
+
+    def add_listener(self, listener: Callable[[Job, ProgressEvent], None]) -> None:
+        """Call ``listener`` for every progress event of every job (no sampling)."""
+        self._listeners.append(listener)
 
     # ------------------------------------------------------------- lifecycle
 
@@ -170,6 +176,11 @@ class JobQueue:
     def _progress(self, entry: _Entry, event: ProgressEvent) -> None:
         entry.job.progress = event
         self.store.save(entry.job)
+        for listener in self._listeners:
+            try:
+                listener(entry.job, event)
+            except Exception:
+                log.exception("progress listener failed")
 
     def _finish(self, entry: _Entry, state: JobState, error: str | None) -> None:
         job = entry.job

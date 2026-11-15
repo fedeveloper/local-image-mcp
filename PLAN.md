@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 code done (§14); waiting for the manual test on Windows.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Next: Phase 3.** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -565,6 +565,14 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
 - Tests use `tests/fake_sd_cli.py`, a stand-in that prints the same format. The real
   `sd-cli` (CPU build, commit 532d2c1) was also run against invalid model files to check
   the error path. No real image was generated in CI: that is the manual test on Windows.
+- Manual test, 2026-11-15, Windows 11 + RTX 5060 8 GB, sd-cli `5dcfa79` (CUDA 12 release):
+  Z-Image-Turbo Q5_K_M, 1024×1024, 8 steps. 35.7 s cold, 22.4 s warm, peak VRAM ~5.3 GB.
+  Same seed gives a byte-identical PNG. sd-cli loads the diffusers sharded text encoder
+  (`text_encoder/model.safetensors.index.json`) and the diffusers VAE.
+- Follow-ups from the test: the registry now lists several quantizations and the unsloth
+  diffusers text encoder / VAE as candidates; `text_encoder_on_cpu` option; the stage parser
+  no longer matches `generate_image completed`; stdout and stderr have separate buffers;
+  the CLI prints every progress event; the raw sd-cli output is saved in `<state>/logs/`.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 

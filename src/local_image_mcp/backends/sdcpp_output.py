@@ -24,14 +24,22 @@ _BAR = re.compile(r"\|(?P<bar>[=#> ]*)\|\s*(?P<step>\d+)/(?P<total>\d+)\s+-")
 _LOG = re.compile(r"^\[(?P<level>[DVIWE?])\]\s+(?P<msg>.*?)(?:\s+---\s+\S+:\d+)?$")
 _VERSION = re.compile(r"version\s+(?P<version>\S+?),?\s+commit\s+(?P<commit>[0-9a-fA-F]+)")
 
-# Log message prefix -> stage that starts with it.
-_STAGE_MARKERS: tuple[tuple[str, ProgressStage], ...] = (
-    ("generate_image ", ProgressStage.ENCODING),
-    ("generating image:", ProgressStage.SAMPLING),
-    ("sampling completed", ProgressStage.DECODING),
-    ("decoding ", ProgressStage.DECODING),
-    ("save result image", ProgressStage.SAVING),
+# Log message pattern -> stage that starts with it. Stages only move forward.
+# Note: "generate_image completed in ..." is also logged at the end; it must not match.
+_STAGE_MARKERS: tuple[tuple[re.Pattern[str], ProgressStage], ...] = (
+    (re.compile(r"^generate_image \d+x\d+"), ProgressStage.ENCODING),
+    (re.compile(r"^generating image:"), ProgressStage.SAMPLING),
+    (re.compile(r"^sampling completed"), ProgressStage.DECODING),
+    (re.compile(r"^decoding "), ProgressStage.DECODING),
+    (re.compile(r"^save result image"), ProgressStage.SAVING),
 )
+_STAGE_ORDER = {
+    ProgressStage.LOADING: 0,
+    ProgressStage.ENCODING: 1,
+    ProgressStage.SAMPLING: 2,
+    ProgressStage.DECODING: 3,
+    ProgressStage.SAVING: 4,
+}
 
 
 def parse_version(text: str) -> tuple[str, str | None]:
@@ -52,14 +60,17 @@ class SdCliOutputParser:
         self.errors: list[str] = []
         self.warnings: list[str] = []
         self.tail: deque[str] = deque(maxlen=keep_lines)
-        self._buffer = ""
+        self._buffers: dict[str, str] = {}
         self._last_step: int | None = None
 
-    def feed(self, chunk: str) -> list[ProgressEvent]:
-        """Parse a chunk of output. Partial segments wait for the next chunk."""
-        self._buffer += chunk
-        parts = re.split(r"[\r\n]", self._buffer)
-        self._buffer = parts.pop()
+    def feed(self, chunk: str, stream: str = "stdout") -> list[ProgressEvent]:
+        """Parse a chunk of output. Partial segments wait for the next chunk.
+
+        Each stream has its own buffer, so stdout and stderr chunks never mix.
+        """
+        buffer = self._buffers.get(stream, "") + chunk
+        parts = re.split(r"[\r\n]", buffer)
+        self._buffers[stream] = parts.pop()
         events: list[ProgressEvent] = []
         for part in parts:
             event = self._segment(part)
@@ -68,10 +79,14 @@ class SdCliOutputParser:
         return events
 
     def finish(self) -> list[ProgressEvent]:
-        """Parse what remains in the buffer at the end of the process."""
-        rest, self._buffer = self._buffer, ""
-        event = self._segment(rest)
-        return [event] if event is not None else []
+        """Parse what remains in the buffers at the end of the process."""
+        events: list[ProgressEvent] = []
+        for stream in list(self._buffers):
+            rest = self._buffers.pop(stream)
+            event = self._segment(rest)
+            if event is not None:
+                events.append(event)
+        return events
 
     def error_summary(self) -> str:
         if self.errors:
@@ -96,8 +111,8 @@ class SdCliOutputParser:
             self.errors.append(message)
         elif level == "W":
             self.warnings.append(message)
-        for prefix, stage in _STAGE_MARKERS:
-            if message.startswith(prefix) and stage != self.stage:
+        for pattern, stage in _STAGE_MARKERS:
+            if pattern.match(message) and _STAGE_ORDER[stage] > _STAGE_ORDER[self.stage]:
                 self.stage = stage
                 if stage is ProgressStage.SAMPLING:
                     self._last_step = 0

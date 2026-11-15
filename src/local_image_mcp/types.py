@@ -98,6 +98,7 @@ class BackendOutput(BaseModel):
     argv: list[str] | None = None
     options: dict[str, Any] = Field(default_factory=dict[str, Any])
     native_record: dict[str, Any] | None = None
+    log_file: Path | None = None
 
 
 class GenerationResult(BaseModel):
