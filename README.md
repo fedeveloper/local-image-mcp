@@ -57,24 +57,20 @@ generate the same images.
 
 <table>
   <tr>
-    <td><img src="docs/images/cabin.jpg" alt="Mountain cabin at dusk in the snow"></td>
-    <td><img src="docs/images/mug.jpg" alt="Product photo of a terracotta coffee mug"></td>
-    <td><img src="docs/images/robot-icon.jpg" alt="Isometric 3D icon of a robot with a paintbrush"></td>
+    <td width="50%"><img src="docs/images/cabin.jpg" alt="Mountain cabin at dusk in the snow"></td>
+    <td width="50%"><img src="docs/images/mug.jpg" alt="Product photo of a terracotta coffee mug"></td>
   </tr>
   <tr>
     <td align="center"><sub>Z-Image-Turbo · photo</sub></td>
     <td align="center"><sub>Z-Image-Turbo · product shot</sub></td>
-    <td align="center"><sub>FLUX.2 klein 4B · app icon</sub></td>
   </tr>
   <tr>
+    <td><img src="docs/images/robot-icon.jpg" alt="Isometric 3D icon of a robot with a paintbrush"></td>
     <td><img src="docs/images/rocket.jpg" alt="Flat vector poster of a rocket over a city"></td>
-    <td><img src="docs/images/fox.jpg" alt="Red fox in the snow at sunrise"></td>
-    <td><img src="docs/images/fox-night.jpg" alt="The same fox at night under northern lights"></td>
   </tr>
   <tr>
+    <td align="center"><sub>FLUX.2 klein 4B · app icon</sub></td>
     <td align="center"><sub>FLUX.2 klein 4B · illustration</sub></td>
-    <td align="center"><sub>FLUX.2 klein 4B · original</sub></td>
-    <td align="center"><sub>FLUX.2 klein 4B · <b>edit</b> of the fox: "make it night, with northern lights"</sub></td>
   </tr>
 </table>
 
