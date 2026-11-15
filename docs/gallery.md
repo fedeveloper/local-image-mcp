@@ -5,7 +5,9 @@ with an RTX 5060 8 GB, with the default steps of each model. Run the same comman
 the same images. Small differences are possible with another sd.cpp version or another
 GPU.
 
-NOTE: The README shows JPEG copies of the PNG files, to keep the repository small.
+NOTE: In Windows PowerShell 5.1, write the quotes inside a prompt as `\"`. Otherwise PowerShell drops them, and the neon sign reads only "local".
+
+NOTE: The README shows JPEG copies of the PNG files (768 px, except the hero), to keep the repository small. `docs/images/social-preview.jpg` is the GitHub social preview (1280×640).
 
 | Image | Model | Size | Seed | Command |
 |---|---|---|---|---|

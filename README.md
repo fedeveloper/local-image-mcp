@@ -42,7 +42,7 @@ You ask *"add a hero image to the landing page"*. A few seconds later the PNG is
 |---|---|
 | 🔒 **Private** | Prompts, reference images and results stay on your computer. |
 | 💸 **Free to run** | No subscription and no cost per image. Generate 500 variants if you want. |
-| 🎮 **Runs on an 8 GB GPU** | Tested on an RTX 5060 8 GB laptop: a 1024×1024 image in about 14–22 s. |
+| 🎮 **Runs on an 8 GB GPU** | Tested on an RTX 5060 8 GB: a 1024×1024 image in about 14–22 s. |
 | 🖼️ **Text to image and edits** | Two ready models. FLUX.2 klein edits an image from up to 4 references. |
 | 🔁 **Reproducible** | Every PNG has a JSON sidecar with all settings. `local-image regenerate` makes it again. |
 | ⏱️ **No timeouts** | Generation runs in a background job. Each MCP call returns in less than a minute. |
@@ -51,7 +51,7 @@ You ask *"add a hero image to the landing page"*. A few seconds later the PNG is
 
 ## Gallery
 
-All images below come from this tool, on a laptop with an RTX 5060 8 GB, with the default
+All images below come from this tool, on an RTX 5060 8 GB, with the default
 settings. The prompts and seeds are in [docs/gallery.md](docs/gallery.md), so you can
 generate the same images.
 
