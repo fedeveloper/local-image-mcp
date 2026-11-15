@@ -105,6 +105,16 @@ The tool respects `HF_HOME` and `HF_HUB_CACHE`. Each model accepts several quant
 (Q4_K_M, Q5_K_M, Q6_K, ...) and text encoders in GGUF or diffusers format: the first
 file found in your cache is used, so you do not download a second copy.
 
+### Other quantizations, other files, other models
+
+- To choose a quantization, set `LOCAL_IMAGE_QUANT` (for example `Q8_0`). To download
+  it, run `uv run local-image models pull z-image-turbo --quant Q8_0`.
+- If your files are not in the built-in list, or you want another model, write your own
+  registry: `uv run local-image models init-registry` creates the file with an example.
+  Your registry stays on your computer and does not change the repository.
+
+Full guide: [docs/models.md](docs/models.md).
+
 ## Use it from Claude Code
 
 1. Register the server for your user. Windows (PowerShell; use `claude.exe`, and put the
@@ -138,8 +148,7 @@ Images go to `<project>/generated-images/` unless Claude gives an `output_path`.
 | `flux2-klein-4b` | FLUX.2 klein 4B (GGUF) | text2img, reference, edit | 4 | ~3.6 GB; ~4.6 GB with a reference | Apache-2.0 |
 
 Measured on an RTX 5060 8 GB with the text encoder on the CPU. You can add or change
-models with your own registry file (`LOCAL_IMAGE_REGISTRY`); see the built-in
-[`models.yaml`](src/local_image_mcp/registry/models.yaml).
+models with your own registry file; see [docs/models.md](docs/models.md).
 
 ### Model licenses
 
@@ -154,7 +163,8 @@ registry for that reason.
 | Command | What it does |
 |---|---|
 | `local-image doctor` | Shows the configuration, the `sd-cli` version and the cache. |
-| `local-image models list / check / pull` | Lists models, checks the cache, downloads missing files. |
+| `local-image models list / check / pull [--quant Q8_0]` | Lists models, checks the cache, downloads missing files. |
+| `local-image models init-registry` | Creates your user registry file, with an example. |
 | `local-image generate -m <model> -p "<prompt>"` | Generates one image (`--seed`, `-W/-H`, `--steps`, `--ref`, `-o`). |
 | `local-image regenerate <image>.json` | Generates an image again from its sidecar. |
 | `local-image claude install-skill / claude-md` | Installs the Claude Code skill, prints the CLAUDE.md section. |

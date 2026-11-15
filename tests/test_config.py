@@ -57,3 +57,8 @@ def test_package_version_matches_pyproject() -> None:
     root = Path(__file__).resolve().parents[1]
     data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
     assert data["project"]["version"] == local_image_mcp.__version__
+
+
+def test_preferred_quant(tmp_path: Path) -> None:
+    assert Settings.from_env({"LOCAL_IMAGE_QUANT": " Q8_0 "}, cwd=tmp_path).quant == "Q8_0"
+    assert Settings.from_env({}, cwd=tmp_path).quant is None

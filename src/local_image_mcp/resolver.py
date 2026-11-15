@@ -8,6 +8,7 @@ The cache location follows ``HF_HUB_CACHE`` and ``HF_HOME`` (read by ``huggingfa
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath
 from typing import cast
@@ -18,7 +19,7 @@ from huggingface_hub import (
 )
 from pydantic import BaseModel, ConfigDict
 
-from local_image_mcp.errors import MissingModelFilesError
+from local_image_mcp.errors import InvalidRequestError, MissingModelFilesError
 from local_image_mcp.registry.schema import FileRef, ModelSpec
 from local_image_mcp.types import ResolvedFile
 
@@ -48,12 +49,24 @@ class ResolvedModel(BaseModel):
 
 
 class ModelResolver:
-    def __init__(self, cache_dir: Path | None = None) -> None:
+    def __init__(self, cache_dir: Path | None = None, prefer_quant: str | None = None) -> None:
+        """``prefer_quant`` (for example ``Q8_0``): candidates with this quantization in the
+        file name come first. The other candidates stay as fallbacks."""
         self.cache_dir = cache_dir
+        self.prefer_quant = prefer_quant or None
+
+    def candidates(self, ref: FileRef, quant: str | None = None) -> list[FileRef]:
+        """The main source, then the alternatives; the preferred quantization first."""
+        items = [ref, *ref.alternatives]
+        quant = quant or self.prefer_quant
+        if not quant:
+            return items
+        preferred = [c for c in items if matches_quant(c, quant)]
+        return preferred + [c for c in items if not matches_quant(c, quant)]
 
     def find(self, role: str, ref: FileRef) -> ResolvedFile | None:
-        """Return the first candidate (main source, then alternatives) that is on disk."""
-        for candidate in (ref, *ref.alternatives):
+        """Return the first candidate (see ``candidates``) that is on disk."""
+        for candidate in self.candidates(ref):
             found = self._find_one(role, candidate)
             if found is not None:
                 return found
@@ -129,29 +142,61 @@ class ModelResolver:
         self,
         spec: ModelSpec,
         *,
+        quant: str | None = None,
         on_file: Callable[[str, str], None] | None = None,
     ) -> ResolvedModel:
-        """Download the missing files of a model. Files already in the cache are skipped."""
-        for role, ref in spec.files.items():
-            if self.find(role, ref) is not None:
-                continue
-            if ref.repo is None or ref.filename is None:
-                raise MissingModelFilesError(
-                    f"Model '{spec.id}': local file for '{role}' not found: {ref.describe()}"
-                )
-            if on_file is not None:
-                on_file(role, ref.describe())
-            index = hf_hub_download(
-                ref.repo, ref.filename, revision=ref.revision, cache_dir=self.cache_dir
+        """Download the missing files of a model. Files already in the cache are skipped.
+
+        With ``quant``, each file that has a candidate with this quantization uses that
+        candidate, even when another quantization is already in the cache.
+        """
+        if quant and not any(
+            matches_quant(c, quant) for ref in spec.files.values() for c in self.candidates(ref)
+        ):
+            known = sorted(
+                {c.describe() for ref in spec.files.values() for c in self.candidates(ref)}
             )
-            if is_shard_index(ref.filename):
-                folder = str(PurePosixPath(ref.filename).parent)
-                for shard in shard_files(Path(index)) or []:
-                    name = shard if folder == "." else f"{folder}/{shard}"
-                    if on_file is not None:
-                        on_file(role, f"{ref.repo}/{name}")
-                    hf_hub_download(ref.repo, name, revision=ref.revision, cache_dir=self.cache_dir)
-        return self.resolve(spec)
+            raise InvalidRequestError(
+                f"Model '{spec.id}' has no file with quantization '{quant}'. Known files:\n  "
+                + "\n  ".join(known)
+                + "\nAdd other files with a user registry (local-image models init-registry)."
+            )
+        for role, ref in spec.files.items():
+            wanted = [c for c in self.candidates(ref, quant) if quant and matches_quant(c, quant)]
+            if wanted:
+                target = wanted[0]
+                if self._find_one(role, target) is not None:
+                    continue
+            else:
+                if self.find(role, ref) is not None:
+                    continue
+                target = self.candidates(ref, quant)[0]
+            self._download(spec, role, target, on_file)
+        return ModelResolver(self.cache_dir, quant or self.prefer_quant).resolve(spec)
+
+    def _download(
+        self,
+        spec: ModelSpec,
+        role: str,
+        ref: FileRef,
+        on_file: Callable[[str, str], None] | None,
+    ) -> None:
+        if ref.repo is None or ref.filename is None:
+            raise MissingModelFilesError(
+                f"Model '{spec.id}': local file for '{role}' not found: {ref.describe()}"
+            )
+        if on_file is not None:
+            on_file(role, ref.describe())
+        index = hf_hub_download(
+            ref.repo, ref.filename, revision=ref.revision, cache_dir=self.cache_dir
+        )
+        if is_shard_index(ref.filename):
+            folder = str(PurePosixPath(ref.filename).parent)
+            for shard in shard_files(Path(index)) or []:
+                name = shard if folder == "." else f"{folder}/{shard}"
+                if on_file is not None:
+                    on_file(role, f"{ref.repo}/{name}")
+                hf_hub_download(ref.repo, name, revision=ref.revision, cache_dir=self.cache_dir)
 
     @staticmethod
     def _refs(spec: ModelSpec, overrides: dict[str, FileRef] | None) -> dict[str, FileRef]:
@@ -159,6 +204,13 @@ class ModelResolver:
         if overrides:
             refs.update(overrides)
         return refs
+
+
+def matches_quant(ref: FileRef, quant: str) -> bool:
+    """True if the file name contains ``quant`` as a whole token (``Q8_0``, ``q4_k_m``)."""
+    name = PurePosixPath(ref.filename).name if ref.filename else (ref.path.name if ref.path else "")
+    pattern = rf"(?<![A-Za-z0-9_]){re.escape(quant)}(?![A-Za-z0-9_])"
+    return re.search(pattern, name, flags=re.IGNORECASE) is not None
 
 
 def is_shard_index(filename: str) -> bool:

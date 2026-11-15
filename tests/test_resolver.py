@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from local_image_mcp.errors import MissingModelFilesError
+from local_image_mcp.errors import InvalidRequestError, MissingModelFilesError
 from local_image_mcp.registry import FileRef, Registry
 from local_image_mcp.resolver import ModelResolver
 
@@ -169,3 +169,57 @@ def test_pull_skips_cached_files(
     resolved = ModelResolver(hf_cache).pull(registry.models["z-image-turbo"])
     assert downloads == []  # every role has a cached candidate (alternatives count)
     assert set(resolved.files) == {"diffusion_model", "text_encoder", "vae"}
+
+
+def test_matches_quant_uses_whole_tokens() -> None:
+    from local_image_mcp.resolver import matches_quant
+
+    ref = FileRef(repo="r", filename="sub/z-image-turbo-Q4_K_M.gguf")
+    assert matches_quant(ref, "Q4_K_M")
+    assert matches_quant(ref, "q4_k_m")
+    assert not matches_quant(ref, "Q4_K")
+    assert not matches_quant(ref, "K_M")
+    assert matches_quant(FileRef(path=Path("/m/flux-Q8_0.gguf")), "Q8_0")
+
+
+def test_preferred_quant_comes_first_with_fallback(
+    hf_cache: Path, registry: Registry, add_cached_file: CacheWriter
+) -> None:
+    _cache_z_image(add_cached_file)
+    add_cached_file("unsloth/Z-Image-Turbo-GGUF", "z-image-turbo-Q8_0.gguf", revision=REV)
+    spec = registry.models["z-image-turbo"]
+
+    default = ModelResolver(hf_cache).resolve(spec)
+    assert default.files["diffusion_model"].filename == "z-image-turbo-Q4_K_M.gguf"
+    preferred = ModelResolver(hf_cache, prefer_quant="Q8_0").resolve(spec)
+    assert preferred.files["diffusion_model"].filename == "z-image-turbo-Q8_0.gguf"
+    # No Q8_0 text encoder in the registry: the normal order applies.
+    assert preferred.files["text_encoder"].filename == "Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
+    fallback = ModelResolver(hf_cache, prefer_quant="Q6_K").resolve(spec)
+    assert fallback.files["diffusion_model"].filename == "z-image-turbo-Q4_K_M.gguf"
+
+
+def test_pull_with_quant_downloads_that_quantization(
+    hf_cache: Path,
+    registry: Registry,
+    add_cached_file: CacheWriter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _cache_z_image(add_cached_file)
+    downloads: list[tuple[str, str]] = []
+
+    def fake_download(repo: str, filename: str, **kwargs: object) -> str:
+        downloads.append((repo, filename))
+        return str(add_cached_file(repo, filename))
+
+    monkeypatch.setattr("local_image_mcp.resolver.hf_hub_download", fake_download)
+    resolver = ModelResolver(hf_cache)
+    resolved = resolver.pull(registry.models["z-image-turbo"], quant="Q6_K")
+    assert downloads == [("unsloth/Z-Image-Turbo-GGUF", "z-image-turbo-Q6_K.gguf")]
+    assert resolved.files["diffusion_model"].filename == "z-image-turbo-Q6_K.gguf"
+
+    resolver.pull(registry.models["z-image-turbo"], quant="Q6_K")
+    assert len(downloads) == 1  # already cached
+
+    with pytest.raises(InvalidRequestError, match="no file with quantization 'Q2_K'"):
+        resolver.pull(registry.models["z-image-turbo"], quant="Q2_K")

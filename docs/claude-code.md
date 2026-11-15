@@ -91,7 +91,8 @@ style to use.
 | `HF_HUB_CACHE` / `HF_HOME` | Hugging Face cache location. |
 | `LOCAL_IMAGE_OUTPUT_DIR` | Default output directory. Default: `<project>/generated-images`. |
 | `LOCAL_IMAGE_ALLOWED_ROOTS` | Extra directories where output files are allowed (`;` on Windows, `:` on Linux). |
-| `LOCAL_IMAGE_REGISTRY` | A user registry YAML file that adds or replaces models. |
+| `LOCAL_IMAGE_REGISTRY` | A user registry YAML file that adds or replaces models. See [models.md](models.md). |
+| `LOCAL_IMAGE_QUANT` | Preferred quantization, for example `Q8_0`. See [models.md](models.md). |
 | `LOCAL_IMAGE_STATE_DIR` | Jobs, GPU lock and sd-cli logs. Default: `%LOCALAPPDATA%\local-image-mcp` on Windows. |
 | `LOCAL_IMAGE_LOG_LEVEL` | Server log level on stderr (default `WARNING`). |
 | `LOCAL_IMAGE_ENABLE_FAKE` | `1` shows the `fake` test model. For development only. |

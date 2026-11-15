@@ -87,7 +87,11 @@ class ImageService:
     ) -> None:
         self.settings = settings
         self.registry = registry if registry is not None else load_registry(settings.user_registry)
-        self.resolver = resolver if resolver is not None else ModelResolver(settings.hf_cache_dir)
+        self.resolver = (
+            resolver
+            if resolver is not None
+            else ModelResolver(settings.hf_cache_dir, prefer_quant=settings.quant)
+        )
         self.backends = backends if backends is not None else create_backends(settings)
         self.policy = OutputPolicy(
             settings.project_dir, settings.output_dir, settings.allowed_roots
