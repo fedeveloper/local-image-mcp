@@ -47,3 +47,13 @@ def test_hf_cache_from_hf_home(tmp_path: Path) -> None:
 
 def test_hf_cache_default_is_library_default(tmp_path: Path) -> None:
     assert Settings.from_env({}, cwd=tmp_path).hf_cache_dir is None
+
+
+def test_package_version_matches_pyproject() -> None:
+    import tomllib
+
+    import local_image_mcp
+
+    root = Path(__file__).resolve().parents[1]
+    data = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+    assert data["project"]["version"] == local_image_mcp.__version__

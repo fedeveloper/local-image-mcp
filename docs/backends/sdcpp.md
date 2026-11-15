@@ -19,9 +19,10 @@ backend still runs, but `doctor` shows a note, because command line options can 
 3. Extract the archive to a folder, for example `C:\tools\stable-diffusion.cpp`.
 4. Open PowerShell in that folder and run `.\sd-cli.exe --version`.
 
-> **Note for RTX 50 series (for example RTX 5060):** these GPUs need a build with
-> CUDA 12.8 or later. If `sd-cli` does not use the GPU, or the first run is very slow,
-> build it from source (below) with `-DCMAKE_CUDA_ARCHITECTURES=120`.
+> **Note for RTX 50 series (for example RTX 5060):** the CUDA 12 release build
+> (commit `5dcfa79`) works on an RTX 5060. If your build does not use the GPU, or the
+> first run is very slow, build it from source (below) with CUDA 12.8 or later and
+> `-DCMAKE_CUDA_ARCHITECTURES=120`.
 
 Build from source (needs Visual Studio 2022, CMake and the CUDA Toolkit 12.8+):
 
