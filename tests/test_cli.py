@@ -18,6 +18,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("LOCAL_IMAGE_PROJECT_DIR", str(project))
     monkeypatch.setenv("LOCAL_IMAGE_STATE_DIR", str(tmp_path / "state"))
     monkeypatch.setenv("HF_HUB_CACHE", str(tmp_path / "hf"))
+    monkeypatch.setenv("LOCAL_IMAGE_SD_BINARY", str(tmp_path / "missing" / "sd-cli"))
     monkeypatch.setattr("local_image_mcp.resolver.hf_hub_download", _no_download)
     return project
 

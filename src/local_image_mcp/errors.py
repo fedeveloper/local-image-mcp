@@ -49,3 +49,7 @@ class JobCancelledError(LocalImageError):
 
 class MetadataError(LocalImageError):
     """A metadata sidecar file is missing or invalid."""
+
+
+class GenerationFailedError(LocalImageError):
+    """The backend ran but did not produce an image."""

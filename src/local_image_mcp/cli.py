@@ -13,6 +13,7 @@ from typing import Any, TextIO
 from huggingface_hub import constants as hf_constants
 
 from local_image_mcp import __version__
+from local_image_mcp.backends.sdcpp import find_binary
 from local_image_mcp.config import Settings
 from local_image_mcp.errors import LocalImageError
 from local_image_mcp.jobs import GpuLock, Job, JobQueue, JobState, JobStore
@@ -261,6 +262,7 @@ def _doctor(settings: Settings, service: ImageService) -> int:
     print(f"state dir:       {settings.state_dir}")
     print(f"user registry:   {settings.user_registry or '(none)'}")
     print(f"HF cache:        {settings.hf_cache_dir or hf_constants.HF_HUB_CACHE}")
+    print(f"sd-cli:          {find_binary(settings.sd_binary) or '(not found)'}")
     print("backends:")
     for name, backend in service.backends.items():
         health = backend.check()

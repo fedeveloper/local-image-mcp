@@ -52,6 +52,7 @@ def settings(tmp_path: Path, hf_cache: Path) -> Settings:
         project_dir=project,
         output_dir=project / "generated-images",
         hf_cache_dir=hf_cache,
+        sd_binary=str(tmp_path / "no-such-dir" / "sd-cli"),
     )
 
 
