@@ -1,8 +1,7 @@
 # local-image-mcp
 
-> **Status: early development (Phase 2 of 7).** The core, the model registry, the CLI
-> and the stable-diffusion.cpp backend work. The MCP server (Phase 3) is not ready yet.
-> See [PLAN.md](PLAN.md).
+> **Status: early development (Phase 3 of 7).** The core, the model registry, the CLI,
+> the stable-diffusion.cpp backend and the MCP server work. See [PLAN.md](PLAN.md).
 
 `local-image-mcp` connects Claude Code (and other MCP clients) to image generation models
 that run on your own GPU. Claude does the reasoning. When a project needs an image, it
@@ -43,6 +42,17 @@ uv run local-image doctor
 uv run local-image models check z-image-turbo
 uv run local-image generate --model z-image-turbo --seed 42 --prompt "A red fox in fresh snow at sunrise, soft warm light, photorealistic"
 ```
+
+## Use it from Claude Code
+
+Register the MCP server as described in [docs/claude-code.md](docs/claude-code.md), for example:
+
+```sh
+claude mcp add --transport stdio --scope user local-image -- uv run --directory /path/to/local-image-mcp local-image-mcp
+```
+
+Then ask Claude for an image. Claude calls `list_models`, `generate_image`,
+`get_job_status` and `get_job_result`, and gets the path of the PNG.
 
 ## Models
 

@@ -103,6 +103,11 @@ class JobQueue:
             raise JobNotFoundError(f"No job with id '{job_id}'.")
         return job
 
+    def prepared(self, job_id: str) -> PreparedJob | None:
+        """The validated settings of a job of this process; ``None`` for an older job."""
+        entry = self._entries.get(job_id)
+        return entry.prepared if entry is not None else None
+
     def queue_position(self, job_id: str) -> int | None:
         """1 = next to run. ``None`` when the job is not waiting in the queue."""
         waiting = [jid for jid in self._order if self._entries[jid].job.state is JobState.QUEUED]

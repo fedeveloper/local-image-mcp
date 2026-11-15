@@ -18,6 +18,8 @@ classifiers = [
 dependencies = [
     "filelock>=3.16",
     "huggingface-hub>=1.0",
+    "mcp>=2.3,<3",
+    "pillow>=11",
     "platformdirs>=4.3",
     "pydantic>=2.12",
     "pyyaml>=6.0.2",
@@ -25,6 +27,7 @@ dependencies = [
 
 [project.scripts]
 local-image = "local_image_mcp.cli:main"
+local-image-mcp = "local_image_mcp.server:main"
 
 [dependency-groups]
 dev = [
