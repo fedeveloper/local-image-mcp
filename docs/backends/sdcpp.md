@@ -119,3 +119,5 @@ Cancel terminates the `sd-cli` process, so the GPU memory is free at once.
 | Date | OS / GPU | sd-cli | Model files | Result |
 |---|---|---|---|---|
 | 2026-11-15 | Windows 11, RTX 5060 8 GB, CUDA 12 release build | commit `5dcfa79` | Z-Image-Turbo Q5_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/Z-Image-Turbo` | 1024×1024, 8 steps: 35.7 s cold, 22.4 s warm; peak VRAM about 5.3 GB; same seed gives a byte-identical PNG |
+| 2026-11-15 | same | same | Z-Image-Turbo Q5_K_M with the built-in registry (no user override) | 1024×1024, 8 steps: 35.2 s; peak VRAM about 5.3 GB above the desktop baseline; progress reaches 8/8 |
+| 2026-11-15 | same | same | FLUX.2-klein-4B Q4_K_M GGUF, diffusers text encoder (on CPU) and VAE from `unsloth/FLUX.2-klein-4B` | 1024×1024, 4 steps: 21.9 s; peak VRAM about 3.6 GB above the desktop baseline; progress reaches 4/4 |

@@ -13,8 +13,9 @@ Environment variables:
   separated by ``os.pathsep`` (``;`` on Windows, ``:`` on Linux).
 - ``LOCAL_IMAGE_SD_BINARY``: path of the stable-diffusion.cpp ``sd-cli`` executable.
 
-The Hugging Face cache location comes from ``HF_HUB_CACHE`` / ``HF_HOME``, read by
-``huggingface_hub`` itself.
+The Hugging Face cache location comes from ``HF_HUB_CACHE``, else ``HF_HOME/hub``, else the
+``huggingface_hub`` default. ``from_env`` reads these variables itself on each call, because
+``huggingface_hub`` reads them only once, at import time.
 """
 
 from __future__ import annotations
@@ -92,9 +93,20 @@ class Settings:
             output_dir=output_dir,
             extra_allowed_roots=extra_roots,
             user_registry=user_registry,
-            hf_cache_dir=None,  # None: huggingface_hub reads HF_HUB_CACHE / HF_HOME
+            hf_cache_dir=_hf_cache_dir(env),
             sd_binary=env.get("LOCAL_IMAGE_SD_BINARY") or None,
         )
+
+
+def _hf_cache_dir(env: Mapping[str, str]) -> Path | None:
+    """Return the HF hub cache from the environment, or ``None`` for the library default."""
+    hub_cache = _path(env.get("HF_HUB_CACHE"))
+    if hub_cache is not None:
+        return hub_cache
+    hf_home = _path(env.get("HF_HOME"))
+    if hf_home is not None:
+        return hf_home / "hub"
+    return None
 
 
 def _path(value: str | None) -> Path | None:

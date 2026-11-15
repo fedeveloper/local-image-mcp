@@ -13,7 +13,12 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     project = tmp_path / "project"
     project.mkdir()
     monkeypatch.chdir(project)
-    for name in ("CLAUDE_PROJECT_DIR", "LOCAL_IMAGE_OUTPUT_DIR", "LOCAL_IMAGE_REGISTRY"):
+    for name in (
+        "CLAUDE_PROJECT_DIR",
+        "LOCAL_IMAGE_OUTPUT_DIR",
+        "LOCAL_IMAGE_REGISTRY",
+        "HF_HOME",
+    ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("LOCAL_IMAGE_PROJECT_DIR", str(project))
     monkeypatch.setenv("LOCAL_IMAGE_STATE_DIR", str(tmp_path / "state"))

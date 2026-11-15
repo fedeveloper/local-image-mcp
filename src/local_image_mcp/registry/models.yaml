@@ -71,7 +71,7 @@ models:
     capabilities: [text2img, reference, edit]
     license: apache-2.0
     license_url: https://huggingface.co/black-forest-labs/FLUX.2-klein-4B
-    vram_estimate_gb: 5.0  # estimate; to measure in Phase 4
+    vram_estimate_gb: 4.5  # measured: 4.3 GB peak, Q4_K_M, 1024x1024, text encoder on CPU
     supports_negative_prompt: false
     max_reference_images: 4  # sd-cli accepts repeated -r; to verify in Phase 4
     prompt_notes: >-
