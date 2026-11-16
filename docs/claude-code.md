@@ -15,7 +15,7 @@ with a JSON sidecar that can reproduce them (`local-image regenerate <file>.json
 
 ## Register the server
 
-Before the first PyPI release, run the server from a clone of this repository.
+Run the server from a clone of this repository.
 
 1. Clone the repository and run `uv sync` in it.
 2. Install `sd-cli` and check the models (see [backends/sdcpp.md](backends/sdcpp.md)):
@@ -45,8 +45,6 @@ claude mcp add --transport stdio --scope user local-image \
   -e LOCAL_IMAGE_SD_BINARY=$HOME/sdcpp/build/bin/sd-cli \
   -- uv run --directory /path/to/local-image-mcp local-image-mcp
 ```
-
-After the release, the command becomes `... local-image -- uvx local-image-mcp`.
 
 4. Start Claude Code in a project and run `/mcp`. The `local-image` server must show as
    connected.
@@ -106,7 +104,7 @@ No timeout setting is necessary. Every tool returns in less than 60 seconds, and
 image generation runs in a background job. `get_job_status` sends progress notifications
 while it waits.
 
-- If the first start of the server is slow (for example, the first `uvx` download), set
+- If the first start of the server is slow (for example, when `uv run` installs the dependencies the first time), set
   `MCP_TIMEOUT=30000` (milliseconds) before you start Claude Code.
 - `MCP_TOOL_TIMEOUT` and `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT` do not affect this server,
   because no tool call is long.
