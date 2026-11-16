@@ -24,7 +24,12 @@ All notable changes are listed here. The format follows
 - Server mode on Windows 11, RTX 5060 8 GB, sd.cpp `5dcfa79`: Z-Image-Turbo 1024×1024
   takes about 14 s per image with the loaded model (22 s with the model load).
 
-## [0.1.0rc1] - 2026-11-15
+### Removed
+
+- PyPI release workflow (`release.yml`) and `docs/releasing.md`: the project is not
+  published on PyPI. Install it from a clone.
+
+## 0.1.0rc1 - 2026-11-15
 
 First release candidate.
 
@@ -52,4 +57,3 @@ First release candidate.
   1024×1024 in 22–36 s (~5.3 GB VRAM); FLUX.2 klein 4B 1024×1024 in 22 s (~3.6 GB);
   a reference edit in 26 s (~4.6 GB); image generation from a Claude Code session.
 
-[0.1.0rc1]: https://github.com/fedeveloper/local-image-mcp/releases/tag/v0.1.0rc1

@@ -1,6 +1,6 @@
 # PLAN.md — local-image-mcp
 
-Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18). Skill installed and listed in Claude Code on Windows. Phase 7 (sd-server mode) done and tested on Windows (§19). The PyPI tag waits for Federico.** Decisions are in §12.
+Status: **Plan approved on 2026-11-15. Phase 1 done (§13). Phase 2 done and tested on Windows (§14). Phase 3 done and tested in Claude Code on Windows (§15). Phase 4 done and tested on Windows (§16). Phase 5 code done (§17). Phase 6 (release candidate 0.1.0rc1) done (§18). Skill installed and listed in Claude Code on Windows. Phase 7 (sd-server mode) done and tested on Windows (§19). PyPI publication dropped by Federico on 2026-11-16 (§21).** Decisions are in §12.
 
 This plan describes an open source MCP server. The server lets Claude Code (and other MCP
 clients) generate images with GGUF diffusion models that run on a local GPU.
@@ -634,7 +634,7 @@ Phase 7 (added): `sd-server` backend with the lifecycle in decision 4.
   PyPI URLs and classifiers.
 - `.github/workflows/release.yml`: on a `v*` tag, check the tag against the version, test,
   build, and publish with PyPI trusted publishing (environment `pypi`). It needs the
-  one-time PyPI setup in `docs/releasing.md`. No tag is pushed without Federico's OK.
+  one-time PyPI setup in `docs/releasing.md`. Removed in §21.
 
 ## 19. Phase 7 notes (sd-server backend)
 
@@ -680,6 +680,13 @@ Choice:
 - No automatic scan of the cache for unknown GGUF files: the registry stays explicit, so
   the server never guesses a file or a model architecture.
 - Guide: `docs/models.md`.
+
+## 21. No PyPI publication (2026-11-16)
+
+Federico decided not to publish the package on PyPI. Removed: `.github/workflows/release.yml`
+and `docs/releasing.md`. Users install from a clone with `uv sync` and register the server
+with `uv run --directory <clone> local-image-mcp`. The `uvx` commands in §6 do not apply.
+The version number stays in `pyproject.toml` for the CHANGELOG and the sidecar metadata.
 
 ## Appendix A — `sd-cli --help` (commit 532d2c1, CPU build)
 
