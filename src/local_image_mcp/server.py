@@ -377,7 +377,20 @@ def create_server(app: LocalImageApp) -> MCPServer[None]:
         lifespan=lifespan,
     )
 
-    read_only = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+    # All four hints are explicit on every tool: some directories reject a tool
+    # when a hint is missing. No tool reaches the network: openWorld is always false.
+    read_only = ToolAnnotations(
+        read_only_hint=True, destructive_hint=False, idempotent_hint=True, open_world_hint=False
+    )
+    # generate_image writes new files and never overwrites (see paths.py); every
+    # call starts a new job, so it is not idempotent.
+    creates_job = ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False
+    )
+    # cancel_job stops a job and deletes no file; a second call has no more effect.
+    cancels_job = ToolAnnotations(
+        read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False
+    )
 
     @server.tool(annotations=read_only)
     def list_models() -> ListModelsResult:
@@ -388,7 +401,7 @@ def create_server(app: LocalImageApp) -> MCPServer[None]:
         """
         return app.list_models()
 
-    @server.tool(annotations=ToolAnnotations(destructive_hint=False, open_world_hint=False))
+    @server.tool(annotations=creates_job)
     def generate_image(
         prompt: Annotated[str, Field(description="What the image shows, in natural language.")],
         model: Annotated[str, Field(description="A model id from list_models.")],
@@ -466,7 +479,7 @@ def create_server(app: LocalImageApp) -> MCPServer[None]:
         """Return the image path, the metadata path and the settings of a finished job."""
         return app.result(job_id, include_preview)
 
-    @server.tool(annotations=ToolAnnotations(destructive_hint=False, open_world_hint=False))
+    @server.tool(annotations=cancels_job)
     async def cancel_job(job_id: str) -> JobStatusResult:
         """Cancel a queued or running job. A finished job does not change."""
         return await app.cancel(job_id)
