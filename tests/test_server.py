@@ -69,6 +69,32 @@ def test_lists_the_five_tools(service: ImageService) -> None:
     ]
 
 
+EXPECTED_HINTS = {
+    # tool: (readOnly, destructive, idempotent, openWorld)
+    "list_models": (True, False, True, False),
+    "generate_image": (False, False, False, False),
+    "get_job_status": (True, False, True, False),
+    "get_job_result": (True, False, True, False),
+    "cancel_job": (False, False, True, False),
+}
+
+
+def test_every_tool_declares_all_four_hints(service: ImageService) -> None:
+    async def scenario(client: Client) -> dict[str, dict[str, Any]]:
+        return {
+            t.name: (t.annotations.model_dump(by_alias=True) if t.annotations else {})
+            for t in (await client.list_tools()).tools
+        }
+
+    annotations = _run(_app(service), scenario)
+    assert set(annotations) == set(EXPECTED_HINTS)
+    keys = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+    for name, hints in annotations.items():
+        for key in keys:
+            assert type(hints.get(key)) is bool, f"{name}: {key} is {hints.get(key)!r}"
+        assert tuple(hints[k] for k in keys) == EXPECTED_HINTS[name], name
+
+
 def test_list_models_reports_availability(service: ImageService) -> None:
     async def scenario(client: Client) -> dict[str, Any]:
         return _data(await client.call_tool("list_models", {}))

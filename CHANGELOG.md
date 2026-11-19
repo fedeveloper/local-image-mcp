@@ -8,6 +8,9 @@ All notable changes are listed here. The format follows
 
 ### Added
 
+- All five MCP tools declare the four annotation hints (`readOnlyHint`,
+  `destructiveHint`, `idempotentHint`, `openWorldHint`) as explicit booleans, so
+  hosts can decide when to ask the user for confirmation.
 - Server mode for the `sdcpp` backend: one `sd-server`
   process keeps the model loaded between images, restarts when the model changes, and
   stops after an idle grace period (`LOCAL_IMAGE_SD_SERVER_IDLE`, default 120 s).
